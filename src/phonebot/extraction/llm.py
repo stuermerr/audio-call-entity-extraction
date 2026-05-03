@@ -24,7 +24,7 @@ class _ExtractedFields(BaseModel):
 
 
 class LLMExtractor(ExtractorBase):
-    """Extraction backend using OpenAI gpt-4.1-mini with structured output.
+    """Extraction backend using a configurable OpenAI chat model with structured output.
 
     Outer @maybe_traceable traces the entire call (including all retry attempts)
     as one LangSmith span. Inner @retry handles transient API failures with
@@ -44,6 +44,7 @@ class LLMExtractor(ExtractorBase):
             else __import__("pathlib").Path(config.extractor_prompt_file)
         )
         self._prompt: PromptTemplate = self.load_prompt(prompt_path)
+        self._model = config.llm_extractor_model
         # Defer client creation so instantiation does not require OPENAI_API_KEY.
         # The key is validated by the SDK only when the first API call is made.
         self._client: openai.AsyncOpenAI | None = None
@@ -70,7 +71,7 @@ class LLMExtractor(ExtractorBase):
         ]
 
         response = await self._client.beta.chat.completions.parse(
-            model="gpt-4.1-mini",
+            model=self._model,
             messages=messages,  # type: ignore[arg-type]
             response_format=_ExtractedFields,
         )
@@ -92,7 +93,7 @@ class LLMExtractor(ExtractorBase):
                 }
             ]
             retry_response = await self._client.beta.chat.completions.parse(
-                model="gpt-4.1-mini",
+                model=self._model,
                 messages=stricter_messages,  # type: ignore[arg-type]
                 response_format=_ExtractedFields,
             )

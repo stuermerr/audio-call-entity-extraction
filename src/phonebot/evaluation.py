@@ -16,6 +16,15 @@ from phonebot.schemas import (
 
 ENTITY_FIELDS: tuple[str, ...] = ("first_name", "last_name", "email", "phone_number")
 
+_ENTITY_HEADERS: dict[str, str] = {
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "email": "Email",
+    "phone_number": "Phone",
+}
+
+_MAX_TRANSCRIPT_CHARS = 5000
+
 
 def normalize_phone(s: str) -> str:
     """Normalise a German phone number to E.164 format where possible.
@@ -179,3 +188,101 @@ class Evaluator:
         out_path = self.output_dir / self.run_id / "case_report.json"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(case_report.model_dump_json(indent=2))
+
+    def write_results_md(
+        self,
+        cases: list[PipelineCaseResult],
+        ground_truth: dict[str, Any],
+        config_snapshot: dict[str, Any],
+        eval_report: EvalReport,
+    ) -> Path:
+        """Write a human-readable ``results.md`` to the run output directory.
+
+        The file contains:
+        - Run ID and config parameters table at the top.
+        - A per-case results table with transcript, extracted entities, expected
+          entities, and per-field match indicators (✓/✗).
+
+        Returns the path to the written file.
+        """
+        eval_by_id: dict[str, EvalResult] = {er.id: er for er in eval_report.results}
+
+        lines: list[str] = []
+
+        # --- Header ---
+        lines.append(f"# Run Results: {self.run_id}")
+        lines.append("")
+
+        # --- Config table ---
+        lines.append("## Config")
+        lines.append("")
+        lines.append("| Parameter | Value |")
+        lines.append("|-----------|-------|")
+        for key, value in sorted(config_snapshot.items()):
+            lines.append(f"| `{key}` | `{value}` |")
+        lines.append("")
+
+        # --- Accuracy summary ---
+        lines.append("## Accuracy Summary")
+        lines.append("")
+        lines.append("| Field | Accuracy |")
+        lines.append("|-------|----------|")
+        for field in ENTITY_FIELDS:
+            pct = eval_report.per_entity_accuracy.get(field, 0.0)
+            lines.append(f"| {_ENTITY_HEADERS[field]} | {pct:.1%} |")
+        lines.append(f"| **Overall** | **{eval_report.overall_accuracy:.1%}** |")
+        lines.append("")
+
+        # --- Results table ---
+        lines.append(f"## Results ({len(cases)} cases)")
+        lines.append("")
+
+        # Build header row
+        entity_cols = " | ".join(_ENTITY_HEADERS[f] for f in ENTITY_FIELDS)
+        lines.append(f"| File | Transcript | {entity_cols} |")
+        sep_cols = " | ".join("---" for _ in ENTITY_FIELDS)
+        lines.append(f"|------|------------|{sep_cols}|")
+
+        for case in cases:
+            cid = case.caller_info.id
+            file_name = Path(case.caller_info.file).name
+            gt = ground_truth.get(cid)
+            er = eval_by_id.get(cid)
+
+            # Transcript cell — cap at _MAX_TRANSCRIPT_CHARS, escape pipe chars
+            raw_transcript = case.transcript or "*(transcription failed)*"
+            if len(raw_transcript) > _MAX_TRANSCRIPT_CHARS:
+                raw_transcript = raw_transcript[:_MAX_TRANSCRIPT_CHARS] + " *(truncated)*"
+            transcript_cell = raw_transcript.replace("|", "\\|").replace("\n", " ")
+
+            # Entity cells: "extracted ✓" on match, "extracted ✗ → expected" on mismatch
+            entity_cells: list[str] = []
+            for field in ENTITY_FIELDS:
+                extracted = getattr(case.caller_info, field)
+                matched = er.per_field.get(field, False) if er else False
+                cell_extracted = f"`{extracted}`" if extracted is not None else "*(null)*"
+
+                if matched:
+                    cell = f"{cell_extracted} ✓"
+                else:
+                    expected_raw = gt.get(field) if gt else None
+                    if isinstance(expected_raw, list):
+                        expected_str = " / ".join(expected_raw)
+                    else:
+                        expected_str = (
+                            str(expected_raw) if expected_raw is not None else "*(missing)*"
+                        )
+                    cell = f"{cell_extracted} ✗ → `{expected_str}`"
+
+                entity_cells.append(cell)
+
+            entity_row = " | ".join(entity_cells)
+            lines.append(f"| {file_name} | {transcript_cell} | {entity_row} |")
+
+        lines.append("")
+
+        out_path = self.output_dir / self.run_id / "results.md"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text("\n".join(lines), encoding="utf-8")
+        self.logger.info("results.md written to %s", out_path)
+        return out_path

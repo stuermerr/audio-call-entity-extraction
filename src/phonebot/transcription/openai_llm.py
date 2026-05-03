@@ -12,8 +12,7 @@ from phonebot.transcription.base import TranscriberBase
 
 
 class OpenAILLMTranscriber(TranscriberBase):
-    """Transcription backend using OpenAI's gpt-4o-mini-transcribe (default) or
-    gpt-4o-transcribe-diarize (when diarization_enabled=True).
+    """Transcription backend using configurable OpenAI audio transcription models.
 
     Outer @maybe_traceable traces the entire call (including all retry attempts)
     as one LangSmith span. Inner @retry handles transient API failures with
@@ -25,6 +24,8 @@ class OpenAILLMTranscriber(TranscriberBase):
 
     def __init__(self, config: PipelineConfig) -> None:
         self._diarization_enabled = config.diarization_enabled
+        self._transcriber_model = config.openai_llm_transcriber_model
+        self._diarization_model = config.openai_llm_diarization_model
         self._client = openai.AsyncOpenAI()
 
     @maybe_traceable("openai_llm.transcribe")
@@ -37,7 +38,7 @@ class OpenAILLMTranscriber(TranscriberBase):
         with open(audio.file, "rb") as fh:
             if self._diarization_enabled:
                 response = await self._client.audio.transcriptions.create(  # type: ignore[call-overload]
-                    model="gpt-4o-transcribe-diarize",
+                    model=self._diarization_model,
                     file=fh,
                     response_format="diarized_json",
                     chunking_strategy="auto",
@@ -64,7 +65,7 @@ class OpenAILLMTranscriber(TranscriberBase):
                 )
             else:
                 response = await self._client.audio.transcriptions.create(
-                    model="gpt-4o-mini-transcribe",
+                    model=self._transcriber_model,
                     file=fh,
                     response_format="json",
                 )

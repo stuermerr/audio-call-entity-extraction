@@ -38,6 +38,9 @@ class PipelineConfig(BaseSettings):
     gpu_enabled: bool = False
     langsmith_tracing: bool = False
     extractor_prompt_file: str | None = None
+    openai_llm_transcriber_model: str = "gpt-4o-mini-transcribe"
+    openai_llm_diarization_model: str = "gpt-4o-transcribe-diarize"
+    llm_extractor_model: str = "gpt-4.1-mini"
     whisperx_model: str = "large-v2"
     whisperx_vad: bool = True
 

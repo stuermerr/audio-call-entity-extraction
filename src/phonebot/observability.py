@@ -66,8 +66,18 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
+_CONSOLE_FORMATTER = logging.Formatter(
+    fmt="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+
+
 def get_logger(run_id: str, output_dir: Path = Path("outputs")) -> logging.Logger:
-    """Return a per-run logger writing JSON to outputs/{run_id}/run.log."""
+    """Return a per-run logger writing JSON to outputs/{run_id}/run.log.
+
+    The file handler captures all DEBUG+ records as JSON lines.
+    The console (stderr) handler captures INFO+ records as plain human-readable text.
+    """
     run_dir = Path(output_dir) / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -83,8 +93,8 @@ def get_logger(run_id: str, output_dir: Path = Path("outputs")) -> logging.Logge
     file_handler.setFormatter(_JsonFormatter())
 
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.WARNING)
-    stream_handler.setFormatter(_JsonFormatter())
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(_CONSOLE_FORMATTER)
 
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
@@ -95,13 +105,22 @@ def save_config_snapshot(
     config: PipelineConfig,
     run_id: str,
     output_dir: Path = Path("outputs"),
+    *,
+    extra: dict | None = None,
 ) -> None:
-    """Serialize config to YAML at outputs/{run_id}/config.yaml."""
+    """Serialize config to YAML at outputs/{run_id}/config.yaml.
+
+    *extra* is merged into the snapshot after ``model_dump()`` so callers can
+    inject resolved values (e.g. the resolved ``extractor_prompt_file`` path).
+    """
     run_dir = Path(output_dir) / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     config_path = run_dir / "config.yaml"
+    data = config.model_dump()
+    if extra:
+        data.update(extra)
     with config_path.open("w", encoding="utf-8") as fh:
-        yaml.safe_dump(config.model_dump(), fh)
+        yaml.safe_dump(data, fh)
 
 
 def maybe_traceable(name: str) -> Callable[[F], F]:

@@ -99,6 +99,9 @@ def _make_config() -> PipelineConfig:
         gpu_enabled=False,
         langsmith_tracing=False,
         extractor_prompt_file=None,
+        openai_llm_transcriber_model="gpt-4o-mini-transcribe",
+        openai_llm_diarization_model="gpt-4o-transcribe-diarize",
+        llm_extractor_model="gpt-4.1-mini",
         whisperx_model="large-v2",
         whisperx_vad=True,
     )
@@ -264,6 +267,9 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
         gpu_enabled=False,
         langsmith_tracing=False,
         extractor_prompt_file=str(prompt_yaml),
+        openai_llm_transcriber_model="gpt-4o-mini-transcribe",
+        openai_llm_diarization_model="gpt-4o-transcribe-diarize",
+        llm_extractor_model="gpt-4.1-mini",
         whisperx_model="large-v2",
         whisperx_vad=True,
     )

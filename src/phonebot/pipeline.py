@@ -42,6 +42,8 @@ async def run_single(
     prompt: PromptTemplate,
     preprocessor: PreprocessorBase,
     diarizer: PyAnnoteDiarizer,
+    idx: int = 0,
+    total: int = 1,
 ) -> PipelineCaseResult:
     """Transcribe, optionally diarize, and extract caller info from one audio file.
 
@@ -52,9 +54,11 @@ async def run_single(
     - ``caller_info`` falls back to a null CallerInfo (all entity fields ``None``)
       on any unrecoverable failure so the batch loop can continue.
     """
+    prefix = f"[{idx + 1}/{total}] {audio.id}"
+
     # 5a. File guard: missing file → skip + null CallerInfo, no transcript
     if not audio.file.exists():
-        logger.error("Audio file not found: %s", audio.file)
+        logger.error("%s — audio file not found: %s", prefix, audio.file)
         return PipelineCaseResult(
             caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
             transcript=None,
@@ -64,10 +68,11 @@ async def run_single(
     audio = await preprocessor.preprocess(audio)
 
     # 5c. Transcription – tenacity reraises after retries, outer except fires once
+    logger.info("%s — transcribing", prefix)
     try:
         result = await transcriber.transcribe(audio)
     except Exception:
-        logger.error("transcription failed", exc_info=True)
+        logger.error("%s — transcription failed", prefix, exc_info=True)
         return PipelineCaseResult(
             caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
             transcript=None,
@@ -75,22 +80,25 @@ async def run_single(
 
     # 5d. Diarization: only when enabled AND transcriber lacks native speaker segments
     if config.diarization_enabled and not transcriber.supports_diarization:
+        logger.info("%s — diarizing", prefix)
         try:
             result = await diarizer.diarize(result)
         except Exception:
-            logger.warning("diarization failed, using raw_text", exc_info=True)
+            logger.warning("%s — diarization failed, using raw_text", prefix, exc_info=True)
             # result unchanged → passthrough
 
     # 5e. Extraction — transcript is preserved even on failure
+    logger.info("%s — extracting", prefix)
     try:
         caller_info = await extractor.extract(audio.id, str(audio.file), result.raw_text, prompt)
     except Exception:
-        logger.error("extraction failed", exc_info=True)
+        logger.error("%s — extraction failed", prefix, exc_info=True)
         return PipelineCaseResult(
             caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
             transcript=result.raw_text,
         )
 
+    logger.info("%s — done", prefix)
     # 5f. Return
     return PipelineCaseResult(caller_info=caller_info, transcript=result.raw_text)
 
@@ -136,17 +144,25 @@ async def run_batch(
         Path(config.extractor_prompt_file) if config.extractor_prompt_file else _DEFAULT_PROMPT
     )
     prompt = ExtractorBase.load_prompt(prompt_path)
+    logger.info("Using extraction prompt: %s", prompt_path)
 
     # 6f. Preprocessor + diarizer
     preprocessor = PreprocessorBase()
     diarizer = PyAnnoteDiarizer()
 
-    # 6g. Persist config snapshot
-    save_config_snapshot(config, run_id, output_dir)
+    # 6g. Persist config snapshot — include resolved prompt path so it is never null
+    save_config_snapshot(
+        config,
+        run_id,
+        output_dir,
+        extra={"extractor_prompt_file": str(prompt_path)},
+    )
 
     # 6h. Sequential processing loop
+    total = len(inputs)
+    logger.info("Starting batch: %d file(s) [sample=%s]", total, config.sample)
     cases: list[PipelineCaseResult] = []
-    for audio in inputs:
+    for idx, audio in enumerate(inputs):
         case = await run_single(
             audio,
             config,
@@ -156,14 +172,18 @@ async def run_batch(
             prompt=prompt,
             preprocessor=preprocessor,
             diarizer=diarizer,
+            idx=idx,
+            total=total,
         )
         cases.append(case)
 
-    # 6i. Build output model
+    logger.info("Batch complete: %d/%d processed", len(cases), total)
+
+    # 6i. Build output model — include resolved prompt path in snapshot
     output = PipelineOutput(
         results=[c.caller_info for c in cases],
         run_id=run_id,
-        config_snapshot=config.model_dump(),
+        config_snapshot={**config.model_dump(), "extractor_prompt_file": str(prompt_path)},
         cases=cases,
     )
 

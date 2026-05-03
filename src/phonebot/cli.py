@@ -16,6 +16,15 @@ from phonebot.schemas import AudioInput
 app = typer.Typer(help="Phone-call extraction pipeline CLI.")
 
 
+def _parse_eval_option(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise typer.BadParameter("--eval must be true or false")
+
+
 def _resolve_inputs(sample: str, data_dir: Path) -> list[AudioInput]:
     """Resolve the list of AudioInput objects for the given sample split.
 
@@ -74,7 +83,12 @@ def run(
     extractor: Optional[str] = typer.Option(
         None, "--extractor", "-e", help="Extractor registry key, e.g. llm"
     ),
-    evaluate: bool = typer.Option(True, "--eval/--no-eval", help="Run eval after extraction"),
+    evaluate: str = typer.Option(
+        "true",
+        "--eval",
+        metavar="true|false",
+        help="Run eval after extraction: true|false",
+    ),
     output_dir: Path = typer.Option(Path("outputs"), "--output-dir", help="Output root directory"),
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
@@ -84,6 +98,7 @@ def run(
         overrides["transcriber"] = transcriber
     if extractor is not None:
         overrides["extractor"] = extractor
+    evaluate_enabled = _parse_eval_option(evaluate)
 
     try:
         config = PipelineConfig(**overrides)  # type: ignore[arg-type]
@@ -96,10 +111,11 @@ def run(
 
     output = asyncio.run(run_batch(inputs, config, output_dir=output_dir))
 
-    if evaluate:
+    if evaluate_enabled:
         ground_truth = _build_ground_truth(Path("data"))
         evaluator = Evaluator(run_id=output.run_id, output_dir=output_dir)
-        report = evaluator.compare(output.results, ground_truth)
+        report = evaluator.compare(output.results, ground_truth, cases=output.cases)
+        evaluator.write_results_md(output.cases, ground_truth, output.config_snapshot, report)
         typer.echo(f"\n--- Eval summary: {output.run_id} ---")
         for field, pct in report.per_entity_accuracy.items():
             typer.echo(f"{field:<14}{pct:.1%}")
