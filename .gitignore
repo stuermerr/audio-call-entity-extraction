@@ -1,6 +1,6 @@
 .env
 
-data/*
+data/
 outputs/*
 
 /*.md
@@ -10,3 +10,12 @@ outputs/*
 .codex/
 .opencode/
 opencode.jsonc
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.venv/
+dist/
