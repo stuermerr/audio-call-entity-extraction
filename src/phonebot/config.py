@@ -2,8 +2,25 @@ from __future__ import annotations
 
 from typing import Literal
 
+from dotenv import load_dotenv
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from pydantic_settings.main import YamlConfigSettingsSource
+
+# Load .env into os.environ early so all consumers (SDKs, observability) see the vars.
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Key-to-backend matrix (update when adding new backends)
+# ---------------------------------------------------------------------------
+# OPENAI_API_KEY  : transcriber="openai_llm"  OR  extractor in ("llm", "privacy_filter")
+# DEEPGRAM_API_KEY: transcriber="deepgram"
+# HF_TOKEN        : diarization_enabled=True  (pyannote.audio gated model)
+# LANGSMITH_API_KEY: langsmith_tracing=True
+# ---------------------------------------------------------------------------
+
+_OPENAI_TRANSCRIBERS = {"openai_llm"}
+_OPENAI_EXTRACTORS = {"llm", "privacy_filter"}
 
 
 class PipelineConfig(BaseSettings):
@@ -13,6 +30,7 @@ class PipelineConfig(BaseSettings):
         extra="ignore",
     )
 
+    # --- pipeline settings ---
     transcriber: str = "openai_llm"
     extractor: str = "llm"
     sample: Literal["dev", "test", "all"] = "dev"
@@ -22,6 +40,37 @@ class PipelineConfig(BaseSettings):
     extractor_prompt_file: str | None = None
     whisperx_model: str = "large-v2"
     whisperx_vad: bool = True
+
+    # --- API keys ---
+    # Excluded from model_dump() / config-snapshot serialisation to avoid
+    # writing secrets to disk.  Validated conditionally: a missing key is only
+    # an error when the configured backend actually needs it.
+    openai_api_key: str = Field(default="", exclude=True)
+    deepgram_api_key: str = Field(default="", exclude=True)
+    hf_token: str = Field(default="", exclude=True)
+    langsmith_api_key: str = Field(default="", exclude=True)
+
+    @model_validator(mode="after")
+    def _validate_required_keys(self) -> "PipelineConfig":
+        """Fail fast only when the configured backend actually needs a key."""
+        if (
+            self.transcriber in _OPENAI_TRANSCRIBERS or self.extractor in _OPENAI_EXTRACTORS
+        ) and not self.openai_api_key:
+            raise ValueError(
+                "OPENAI_API_KEY is required for "
+                f"transcriber={self.transcriber!r} / extractor={self.extractor!r}"
+            )
+
+        if self.transcriber == "deepgram" and not self.deepgram_api_key:
+            raise ValueError("DEEPGRAM_API_KEY is required when transcriber='deepgram'")
+
+        if self.diarization_enabled and not self.hf_token:
+            raise ValueError("HF_TOKEN is required when diarization_enabled=True")
+
+        if self.langsmith_tracing and not self.langsmith_api_key:
+            raise ValueError("LANGSMITH_API_KEY is required when langsmith_tracing=True")
+
+        return self
 
     @classmethod
     def settings_customise_sources(
