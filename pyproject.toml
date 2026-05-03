@@ -20,6 +20,7 @@ dev = [
     "mypy",
     "pytest",
     "types-pyyaml>=6.0.12.20260408",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.scripts]
@@ -41,3 +42,6 @@ select = ["E", "W", "F", "I"]
 [tool.mypy]
 strict = false
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
