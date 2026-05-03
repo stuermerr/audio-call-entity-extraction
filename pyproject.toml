@@ -22,6 +22,9 @@ dev = [
     "types-pyyaml>=6.0.12.20260408",
     "pytest-asyncio>=0.23",
 ]
+gpu = [
+    "whisperx",
+]
 
 [project.scripts]
 phonebot = "phonebot.cli:app"

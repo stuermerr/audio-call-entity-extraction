@@ -201,7 +201,7 @@ class Evaluator:
         The file contains:
         - Run ID and config parameters table at the top.
         - A per-case results table with transcript, extracted entities, expected
-          entities, and per-field match indicators (✓/✗).
+          entities, and per-field match indicators (✅/❌).
 
         Returns the path to the written file.
         """
@@ -255,7 +255,7 @@ class Evaluator:
                 raw_transcript = raw_transcript[:_MAX_TRANSCRIPT_CHARS] + " *(truncated)*"
             transcript_cell = raw_transcript.replace("|", "\\|").replace("\n", " ")
 
-            # Entity cells: "extracted ✓" on match, "extracted ✗ → expected" on mismatch
+            # Entity cells: "extracted ✅" on match, "extracted ❌ → expected" on mismatch
             entity_cells: list[str] = []
             for field in ENTITY_FIELDS:
                 extracted = getattr(case.caller_info, field)
@@ -263,7 +263,7 @@ class Evaluator:
                 cell_extracted = f"`{extracted}`" if extracted is not None else "*(null)*"
 
                 if matched:
-                    cell = f"{cell_extracted} ✓"
+                    cell = f"{cell_extracted} ✅"
                 else:
                     expected_raw = gt.get(field) if gt else None
                     if isinstance(expected_raw, list):
@@ -272,7 +272,7 @@ class Evaluator:
                         expected_str = (
                             str(expected_raw) if expected_raw is not None else "*(missing)*"
                         )
-                    cell = f"{cell_extracted} ✗ → `{expected_str}`"
+                    cell = f"{cell_extracted} ❌ → `{expected_str}`"
 
                 entity_cells.append(cell)
 

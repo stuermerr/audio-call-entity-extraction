@@ -209,3 +209,34 @@ def test_case_report_missing_gt_entry(tmp_path: Path) -> None:
     assert entry["expected"] is None
     assert entry["transcript"] is None
     assert all(v is False for v in entry["per_field"].values())
+
+
+def test_results_md_uses_emoji_match_indicators(tmp_path: Path) -> None:
+    run_id = "test_results_md"
+    evaluator = Evaluator(run_id=run_id, output_dir=tmp_path)
+    caller = CallerInfo(
+        id="call_01",
+        file="call_01.wav",
+        first_name="Max",
+        last_name="Wrong",
+        email="max@example.com",
+        phone_number="+4915211223456",
+    )
+    ground_truth = {
+        "call_01": {
+            "first_name": "Max",
+            "last_name": "Mustermann",
+            "email": "max@example.com",
+            "phone_number": "+4915211223456",
+        }
+    }
+    cases = _make_cases([caller], ["Hallo ich bin Max."])
+    eval_report = evaluator.compare([caller], ground_truth)
+
+    results_path = evaluator.write_results_md(cases, ground_truth, {}, eval_report)
+
+    results_md = results_path.read_text(encoding="utf-8")
+    assert "`Max` ✅" in results_md
+    assert "`Wrong` ❌ → `Mustermann`" in results_md
+    assert "✓" not in results_md
+    assert "✗" not in results_md

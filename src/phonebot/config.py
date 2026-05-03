@@ -43,6 +43,8 @@ class PipelineConfig(BaseSettings):
     llm_extractor_model: str = "gpt-4.1-mini"
     whisperx_model: str = "large-v2"
     whisperx_vad: bool = True
+    whisperx_compute_type: str = "float16"
+    whisperx_language: str | None = None
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid

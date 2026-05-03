@@ -9,6 +9,7 @@ scripts/debug_single_call.py
 
 .agents/
 .codex/
+.claude/
 .opencode/
 opencode.jsonc
 

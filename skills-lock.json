@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "api": {
+      "source": "deepgram/skills",
+      "sourceType": "github",
+      "skillPath": "skills/api/SKILL.md",
+      "computedHash": "c70381c6687bd8627f06fabc173584a4b97edc6d991d7a7a8e174974e449849e"
+    },
+    "docs": {
+      "source": "deepgram/skills",
+      "sourceType": "github",
+      "skillPath": "skills/docs/SKILL.md",
+      "computedHash": "5fb68a79b7d8f66d5fe6fb5641aa88fdcc9e4b66d6a8dc05d12edc9ada860a4d"
+    }
+  }
+}
