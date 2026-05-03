@@ -1,0 +1,11 @@
+system: |
+  # TODO: Implement privacy_filter extractor system prompt.
+  # See DECISIONS.md "Privacy filter extractor approach" for the planned implementation:
+  # Use the OpenAI Privacy Filter API to detect PII spans (person name, email, phone),
+  # then map detected spans to first_name / last_name / email / phone_number schema fields.
+
+user: |
+  # TODO: Implement privacy_filter extractor user prompt.
+  # See DECISIONS.md "Privacy filter extractor approach" for details.
+  Transcript:
+  {{ transcript }}
