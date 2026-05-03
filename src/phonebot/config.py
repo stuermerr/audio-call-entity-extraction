@@ -42,7 +42,6 @@ class PipelineConfig(BaseSettings):
     openai_llm_diarization_model: str = "gpt-4o-transcribe-diarize"
     llm_extractor_model: str = "gpt-4.1-mini"
     whisperx_model: str = "large-v2"
-    whisperx_vad: bool = True
     whisperx_compute_type: str = "float16"
     whisperx_language: str = "auto"
     deepgram_model: str = "nova-3"

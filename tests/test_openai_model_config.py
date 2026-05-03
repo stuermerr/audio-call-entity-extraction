@@ -26,7 +26,6 @@ def _make_config(**overrides: object) -> PipelineConfig:
         "openai_llm_diarization_model": "custom-diarize-model",
         "llm_extractor_model": "custom-extractor-model",
         "whisperx_model": "large-v2",
-        "whisperx_vad": True,
     }
     values.update(overrides)
     return PipelineConfig.model_construct(**values)  # type: ignore[arg-type]

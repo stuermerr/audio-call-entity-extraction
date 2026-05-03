@@ -237,6 +237,7 @@ def test_results_md_uses_emoji_match_indicators(tmp_path: Path) -> None:
 
     results_md = results_path.read_text(encoding="utf-8")
     assert "`Max` ✅" in results_md
-    assert "`Wrong` ❌ → `Mustermann`" in results_md
+    assert "`Wrong` ⛔ → `Mustermann`" in results_md
+    assert "❌" not in results_md
     assert "✓" not in results_md
     assert "✗" not in results_md

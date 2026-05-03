@@ -21,7 +21,6 @@ def _make_transcriber(*, diarization_enabled: bool = False) -> WhisperXTranscrib
     t._model_name = "large-v2"
     t._compute_type = "float16"
     t._language = None
-    t._vad = True
     t._diarization_enabled = diarization_enabled
     t._hf_token = "fake-hf-token"
     t._wx = MagicMock()
@@ -45,7 +44,6 @@ def test_gpu_disabled_raises() -> None:
     config = PipelineConfig.model_construct(
         gpu_enabled=False,
         whisperx_model="large-v2",
-        whisperx_vad=True,
         whisperx_compute_type="float16",
         whisperx_language="auto",
         diarization_enabled=False,

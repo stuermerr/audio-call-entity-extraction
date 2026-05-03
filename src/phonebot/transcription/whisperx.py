@@ -23,7 +23,6 @@ class WhisperXTranscriber(TranscriberBase):
       - whisperx_model: model size (e.g. large-v2)
       - whisperx_compute_type: float16 | int8 | float32 (VRAM/accuracy tradeoff)
       - whisperx_language: language hint, e.g. "de"; "auto" = auto-detect
-      - whisperx_vad: enable/disable VAD filter during transcription
       - diarization_enabled: whether to run speaker diarization (requires hf_token)
 
     Outer @maybe_traceable traces the entire call as one LangSmith span.
@@ -53,7 +52,6 @@ class WhisperXTranscriber(TranscriberBase):
         self._model_name = config.whisperx_model
         self._compute_type = config.whisperx_compute_type
         self._language: str | None = _whisperx_language_arg(config.whisperx_language)
-        self._vad: bool = config.whisperx_vad
         self._diarization_enabled = config.diarization_enabled
         self._hf_token = config.hf_token
 
@@ -83,7 +81,6 @@ class WhisperXTranscriber(TranscriberBase):
             audio_array,
             batch_size=16,
             language=self._language,
-            vad_filter=self._vad,
         )
 
         if not self._diarization_enabled:

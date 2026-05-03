@@ -103,7 +103,6 @@ def _make_config() -> PipelineConfig:
         openai_llm_diarization_model="gpt-4o-transcribe-diarize",
         llm_extractor_model="gpt-4.1-mini",
         whisperx_model="large-v2",
-        whisperx_vad=True,
     )
 
 
@@ -271,7 +270,6 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
         openai_llm_diarization_model="gpt-4o-transcribe-diarize",
         llm_extractor_model="gpt-4.1-mini",
         whisperx_model="large-v2",
-        whisperx_vad=True,
     )
 
     output = await run_batch(inputs, config, output_dir=tmp_path)
