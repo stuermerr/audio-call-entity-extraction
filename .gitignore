@@ -1,0 +1,12 @@
+.env
+
+data/*
+outputs/*
+
+/*.md
+!/README.md
+
+.agents/
+.codex/
+.opencode/
+opencode.jsonc
