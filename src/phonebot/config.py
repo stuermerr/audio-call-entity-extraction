@@ -15,12 +15,13 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # OPENAI_API_KEY  : transcriber="openai_llm"  OR  extractor in ("llm", "privacy_filter")
 # DEEPGRAM_API_KEY: transcriber="deepgram"
-# HF_TOKEN        : diarization_enabled=True  (pyannote.audio gated model)
+# HF_TOKEN        : diarization_enabled=True with WhisperX or pyannote fallback
 # LANGSMITH_API_KEY: langsmith_tracing=True
 # ---------------------------------------------------------------------------
 
 _OPENAI_TRANSCRIBERS = {"openai_llm"}
 _OPENAI_EXTRACTORS = {"llm", "privacy_filter"}
+_HF_DIARIZATION_TRANSCRIBERS = {"whisperx", "parakeet"}
 
 
 class PipelineConfig(BaseSettings):
@@ -47,6 +48,7 @@ class PipelineConfig(BaseSettings):
     deepgram_model: str = "nova-3"
     deepgram_language: str = "default"
     deepgram_smart_format: bool = True
+    parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid
@@ -71,8 +73,15 @@ class PipelineConfig(BaseSettings):
         if self.transcriber == "deepgram" and not self.deepgram_api_key:
             raise ValueError("DEEPGRAM_API_KEY is required when transcriber='deepgram'")
 
-        if self.diarization_enabled and not self.hf_token:
-            raise ValueError("HF_TOKEN is required when diarization_enabled=True")
+        if (
+            self.diarization_enabled
+            and self.transcriber in _HF_DIARIZATION_TRANSCRIBERS
+            and not self.hf_token
+        ):
+            raise ValueError(
+                "HF_TOKEN is required when diarization_enabled=True "
+                f"with transcriber={self.transcriber!r}"
+            )
 
         if self.langsmith_tracing and not self.langsmith_api_key:
             raise ValueError("LANGSMITH_API_KEY is required when langsmith_tracing=True")
@@ -88,6 +97,8 @@ class PipelineConfig(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        # First source wins:
+        # explicit init kwargs (CLI overrides) > env/.env > config.yaml > defaults.
         return (
             init_settings,
             env_settings,

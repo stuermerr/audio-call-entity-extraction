@@ -76,7 +76,12 @@ def _build_ground_truth(data_dir: Path) -> dict[str, dict]:  # type: ignore[type
 
 @app.command()
 def run(
-    samples: str = typer.Option("dev", "--samples", "-s", help="Split to process: dev|test|all"),
+    samples: Optional[str] = typer.Option(
+        None,
+        "--samples",
+        "-s",
+        help="Split to process: dev|test|all. If omitted, config/env/defaults apply.",
+    ),
     transcriber: Optional[str] = typer.Option(
         None, "--transcriber", "-t", help="Transcriber registry key, e.g. openai_llm"
     ),
@@ -93,7 +98,9 @@ def run(
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
     # Build PipelineConfig; CLI values override yaml/env for explicitly-provided args only.
-    overrides: dict[str, object] = {"sample": samples}
+    overrides: dict[str, object] = {}
+    if samples is not None:
+        overrides["sample"] = samples
     if transcriber is not None:
         overrides["transcriber"] = transcriber
     if extractor is not None:

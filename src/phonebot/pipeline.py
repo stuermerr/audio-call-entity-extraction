@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json  # noqa: F401 – reserved for future JSON utilities
 import logging
 import os
 from pathlib import Path

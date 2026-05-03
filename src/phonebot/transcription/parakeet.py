@@ -8,17 +8,15 @@ from phonebot.transcription.base import TranscriberBase
 
 
 class ParakeetTranscriber(TranscriberBase):
-    """NVIDIA Parakeet transcription backend stub (GPU required).
+    """NVIDIA Parakeet transcription backend (GPU required).
 
-    # TODO: Implement Parakeet transcription.
-    #   - Requires NVIDIA NeMo / nemo_toolkit and a CUDA-capable GPU.
-    #   - supports_diarization is set to True provisionally (ARCHITECTURE.md: "to be
-    #     verified"); update once the backend is wired up.
-    #   - Set gpu_enabled=True in config to use this backend.
+    Uses the NeMo FastConformer-TDT model (parakeet-tdt-0.6b-v3) for
+    transcription-only inference. Produces word/segment timestamps but no
+    speaker diarization. Requires nemo_toolkit[asr] (gpu dependency group)
+    and a CUDA-capable GPU (gpu_enabled=True in config).
     """
 
-    # TODO: Verify diarization support for Parakeet once implemented.
-    supports_diarization: ClassVar[bool] = True
+    supports_diarization: ClassVar[bool] = False
 
     def __init__(self, config: PipelineConfig) -> None:
         if not config.gpu_enabled:

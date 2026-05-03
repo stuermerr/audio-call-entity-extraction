@@ -25,6 +25,7 @@ dev = [
 ]
 gpu = [
     "whisperx",
+    "nemo_toolkit[asr]",
 ]
 
 [project.scripts]
