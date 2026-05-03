@@ -2,7 +2,7 @@
 
 data/
 outputs/*
-scripts/
+scripts/debug_single_call.py
 
 /*.md
 !/README.md
