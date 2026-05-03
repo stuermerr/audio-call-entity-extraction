@@ -3,8 +3,16 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
-from phonebot.schemas import CallerInfo, EvalReport, EvalResult
+from phonebot.schemas import (
+    CallerInfo,
+    CaseReport,
+    CaseReportEntry,
+    EvalReport,
+    EvalResult,
+    PipelineCaseResult,
+)
 
 ENTITY_FIELDS: tuple[str, ...] = ("first_name", "last_name", "email", "phone_number")
 
@@ -70,12 +78,18 @@ class Evaluator:
         self,
         results: list[CallerInfo],
         ground_truth: dict[str, dict],  # type: ignore[type-arg]
+        *,
+        cases: list[PipelineCaseResult] | None = None,
     ) -> EvalReport:
         """Evaluate *results* against *ground_truth* and return an EvalReport.
 
         *ground_truth* maps caller id → dict of expected field values.
 
         Missing ids count as all-miss; fields absent from ground truth are not penalised.
+
+        When *cases* is provided, ``_write_case_report`` is called to write
+        ``outputs/<run_id>/case_report.json`` combining pipeline data with evaluation
+        results.  When *cases* is ``None`` the file is not written.
         """
         eval_results: list[EvalResult] = []
 
@@ -123,4 +137,45 @@ class Evaluator:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(report.model_dump_json(indent=2))
 
+        if cases is not None:
+            self._write_case_report(cases, eval_results, ground_truth)
+
         return report
+
+    def _write_case_report(
+        self,
+        cases: list[PipelineCaseResult],
+        eval_results: list[EvalResult],
+        ground_truth: dict[str, Any],
+    ) -> None:
+        """Build and write ``outputs/<run_id>/case_report.json``.
+
+        Entries are written in input order (matching ``run_batch`` processing order).
+        Each entry aligns the pipeline case with its matching ``EvalResult`` by id.
+        ``expected`` is the raw ground-truth dict for that id, or ``None`` if absent.
+        """
+        # Build a lookup from caller id → EvalResult for O(1) alignment
+        eval_by_id: dict[str, EvalResult] = {er.id: er for er in eval_results}
+
+        entries: list[CaseReportEntry] = []
+        for case in cases:
+            cid = case.caller_info.id
+            er = eval_by_id.get(cid)
+            per_field: dict[str, bool] = (
+                er.per_field if er is not None else {f: False for f in ENTITY_FIELDS}
+            )
+            entries.append(
+                CaseReportEntry(
+                    id=cid,
+                    file=case.caller_info.file,
+                    transcript=case.transcript,
+                    predicted=case.caller_info,
+                    expected=ground_truth.get(cid),
+                    per_field=per_field,
+                )
+            )
+
+        case_report = CaseReport(run_id=self.run_id, cases=entries)
+        out_path = self.output_dir / self.run_id / "case_report.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(case_report.model_dump_json(indent=2))

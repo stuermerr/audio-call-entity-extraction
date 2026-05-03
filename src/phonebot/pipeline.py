@@ -17,7 +17,7 @@ from phonebot.extraction.base import (
 )
 from phonebot.observability import get_logger, make_run_id, save_config_snapshot
 from phonebot.preprocessing.base import PreprocessorBase
-from phonebot.schemas import AudioInput, CallerInfo, PipelineOutput
+from phonebot.schemas import AudioInput, CallerInfo, PipelineCaseResult, PipelineOutput
 from phonebot.transcription import REGISTRY as TRANSCRIPTION_REGISTRY
 from phonebot.transcription import TranscriberBase
 
@@ -42,16 +42,23 @@ async def run_single(
     prompt: PromptTemplate,
     preprocessor: PreprocessorBase,
     diarizer: PyAnnoteDiarizer,
-) -> CallerInfo:
+) -> PipelineCaseResult:
     """Transcribe, optionally diarize, and extract caller info from one audio file.
 
-    Returns a null CallerInfo (all entity fields None) on any unrecoverable failure
-    so the batch loop can continue with the remaining files.
+    Returns a ``PipelineCaseResult`` in all cases:
+    - ``transcript`` is ``None`` on file-not-found or transcription failure.
+    - ``transcript`` is populated (``result.raw_text``) even if extraction fails,
+      so the raw transcript is always preserved for debugging.
+    - ``caller_info`` falls back to a null CallerInfo (all entity fields ``None``)
+      on any unrecoverable failure so the batch loop can continue.
     """
-    # 5a. File guard: missing file → skip + null CallerInfo
+    # 5a. File guard: missing file → skip + null CallerInfo, no transcript
     if not audio.file.exists():
         logger.error("Audio file not found: %s", audio.file)
-        return CallerInfo(id=audio.id, file=str(audio.file))
+        return PipelineCaseResult(
+            caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
+            transcript=None,
+        )
 
     # 5b. Preprocessing (passthrough in MVP, never raises)
     audio = await preprocessor.preprocess(audio)
@@ -61,7 +68,10 @@ async def run_single(
         result = await transcriber.transcribe(audio)
     except Exception:
         logger.error("transcription failed", exc_info=True)
-        return CallerInfo(id=audio.id, file=str(audio.file))
+        return PipelineCaseResult(
+            caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
+            transcript=None,
+        )
 
     # 5d. Diarization: only when enabled AND transcriber lacks native speaker segments
     if config.diarization_enabled and not transcriber.supports_diarization:
@@ -71,15 +81,18 @@ async def run_single(
             logger.warning("diarization failed, using raw_text", exc_info=True)
             # result unchanged → passthrough
 
-    # 5e. Extraction
+    # 5e. Extraction — transcript is preserved even on failure
     try:
         caller_info = await extractor.extract(audio.id, str(audio.file), result.raw_text, prompt)
     except Exception:
         logger.error("extraction failed", exc_info=True)
-        return CallerInfo(id=audio.id, file=str(audio.file))
+        return PipelineCaseResult(
+            caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
+            transcript=result.raw_text,
+        )
 
     # 5f. Return
-    return caller_info
+    return PipelineCaseResult(caller_info=caller_info, transcript=result.raw_text)
 
 
 async def run_batch(
@@ -132,9 +145,9 @@ async def run_batch(
     save_config_snapshot(config, run_id, output_dir)
 
     # 6h. Sequential processing loop
-    results: list[CallerInfo] = []
+    cases: list[PipelineCaseResult] = []
     for audio in inputs:
-        caller_info = await run_single(
+        case = await run_single(
             audio,
             config,
             logger,
@@ -144,18 +157,19 @@ async def run_batch(
             preprocessor=preprocessor,
             diarizer=diarizer,
         )
-        results.append(caller_info)
+        cases.append(case)
 
     # 6i. Build output model
     output = PipelineOutput(
-        results=results,
+        results=[c.caller_info for c in cases],
         run_id=run_id,
         config_snapshot=config.model_dump(),
+        cases=cases,
     )
 
-    # 6j. Persist results
+    # 6j. Persist results — exclude 'cases' to keep results.json backward-compatible
     results_path = Path(output_dir) / run_id / "results.json"
-    results_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+    results_path.write_text(output.model_dump_json(indent=2, exclude={"cases"}), encoding="utf-8")
 
     # 6k. Return
     return output

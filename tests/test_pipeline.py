@@ -17,7 +17,7 @@ from phonebot.extraction.base import (
 )
 from phonebot.pipeline import run_batch, run_single
 from phonebot.preprocessing.base import PreprocessorBase
-from phonebot.schemas import AudioInput, CallerInfo, TranscriptionResult
+from phonebot.schemas import AudioInput, CallerInfo, PipelineCaseResult, TranscriptionResult
 from phonebot.transcription import REGISTRY as TRANSCRIPTION_REGISTRY
 from phonebot.transcription import TranscriberBase
 
@@ -139,7 +139,7 @@ async def test_run_single_happy_path(tmp_path: Path) -> None:
     wav.write_bytes(b"RIFF....")
     audio = AudioInput(id="c1", file=wav)
 
-    caller_info = await run_single(
+    case = await run_single(
         audio,
         _make_config(),
         _make_logger(),
@@ -150,17 +150,19 @@ async def test_run_single_happy_path(tmp_path: Path) -> None:
         diarizer=_make_diarizer(),
     )
 
-    assert caller_info.first_name == "Max"
-    assert caller_info.last_name == "Muster"
+    assert isinstance(case, PipelineCaseResult)
+    assert case.caller_info.first_name == "Max"
+    assert case.caller_info.last_name == "Muster"
+    assert case.transcript == "Max Muster max@test.com 015201234567"
 
 
 # ---------------------------------------------------------------------------
-# Step 15 – File guard: missing file → skip + null CallerInfo
+# Step 15 – File guard: missing file → skip + null CallerInfo, transcript None
 # ---------------------------------------------------------------------------
 async def test_run_single_missing_file(tmp_path: Path) -> None:
     audio = AudioInput(id="c1", file=tmp_path / "missing.wav")
 
-    caller_info = await run_single(
+    case = await run_single(
         audio,
         _make_config(),
         _make_logger(),
@@ -171,19 +173,20 @@ async def test_run_single_missing_file(tmp_path: Path) -> None:
         diarizer=_make_diarizer(),
     )
 
-    assert caller_info.first_name is None
-    assert caller_info.last_name is None
+    assert case.caller_info.first_name is None
+    assert case.caller_info.last_name is None
+    assert case.transcript is None
 
 
 # ---------------------------------------------------------------------------
-# Step 16 – Transcription failure → null CallerInfo
+# Step 16 – Transcription failure → null CallerInfo, transcript None
 # ---------------------------------------------------------------------------
 async def test_run_single_transcription_failure(tmp_path: Path) -> None:
     wav = tmp_path / "c1.wav"
     wav.write_bytes(b"RIFF....")
     audio = AudioInput(id="c1", file=wav)
 
-    caller_info = await run_single(
+    case = await run_single(
         audio,
         _make_config(),
         _make_logger(),
@@ -194,21 +197,22 @@ async def test_run_single_transcription_failure(tmp_path: Path) -> None:
         diarizer=_make_diarizer(),
     )
 
-    assert caller_info.first_name is None
-    assert caller_info.last_name is None
-    assert caller_info.email is None
-    assert caller_info.phone_number is None
+    assert case.caller_info.first_name is None
+    assert case.caller_info.last_name is None
+    assert case.caller_info.email is None
+    assert case.caller_info.phone_number is None
+    assert case.transcript is None
 
 
 # ---------------------------------------------------------------------------
-# Step 17 – Extraction failure → null CallerInfo
+# Step 17 – Extraction failure → null CallerInfo, but transcript IS preserved
 # ---------------------------------------------------------------------------
 async def test_run_single_extraction_failure(tmp_path: Path) -> None:
     wav = tmp_path / "c1.wav"
     wav.write_bytes(b"RIFF....")
     audio = AudioInput(id="c1", file=wav)
 
-    caller_info = await run_single(
+    case = await run_single(
         audio,
         _make_config(),
         _make_logger(),
@@ -219,10 +223,12 @@ async def test_run_single_extraction_failure(tmp_path: Path) -> None:
         diarizer=_make_diarizer(),
     )
 
-    assert caller_info.first_name is None
-    assert caller_info.last_name is None
-    assert caller_info.email is None
-    assert caller_info.phone_number is None
+    assert case.caller_info.first_name is None
+    assert case.caller_info.last_name is None
+    assert case.caller_info.email is None
+    assert case.caller_info.phone_number is None
+    # Transcript is preserved even when extraction fails
+    assert case.transcript == "Max Muster max@test.com 015201234567"
 
 
 # ---------------------------------------------------------------------------
@@ -268,9 +274,15 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
     assert isinstance(output.run_id, str) and output.run_id != ""
     assert isinstance(output.config_snapshot, dict)
 
+    # cases is populated in-memory with 2 PipelineCaseResult objects
+    assert len(output.cases) == 2
+    assert all(isinstance(c, PipelineCaseResult) for c in output.cases)
+
     results_path = tmp_path / output.run_id / "results.json"
     assert results_path.exists()
 
     data = json.loads(results_path.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
     assert len(data["results"]) == 2
+    # cases must NOT appear in the serialised results.json
+    assert "cases" not in data
