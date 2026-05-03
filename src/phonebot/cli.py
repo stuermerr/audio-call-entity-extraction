@@ -80,7 +80,7 @@ def run(
         None,
         "--samples",
         "-s",
-        help="Split to process: dev|test|all. If omitted, config/env/defaults apply.",
+        help="Split to process: dev|test|failed|all. If omitted, config/env/defaults apply.",
     ),
     transcriber: Optional[str] = typer.Option(
         None, "--transcriber", "-t", help="Transcriber registry key, e.g. openai_llm"

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import yaml
 from typer.testing import CliRunner
 
-from phonebot.cli import app
+from phonebot.cli import _resolve_inputs, app
 from phonebot.config import PipelineConfig
 from phonebot.schemas import PipelineOutput
 
@@ -39,7 +40,9 @@ def _write_cli_config(tmp_path: Path) -> None:
     )
 
 
-def test_eval_option_accepts_explicit_false(monkeypatch) -> None:
+def test_eval_option_accepts_explicit_false(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("SAMPLE", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr("phonebot.cli._resolve_inputs", lambda sample, data_dir: [])
     monkeypatch.setattr("phonebot.cli.run_batch", _fake_run_batch)
@@ -123,3 +126,49 @@ def test_explicit_config_flags_override_config_yaml(tmp_path: Path, monkeypatch)
     assert captured[0].sample == "all"
     assert captured[0].transcriber == "deepgram"
     assert captured[0].extractor == "privacy_filter"
+
+
+def test_failed_sample_flag_is_accepted(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    captured: list[PipelineConfig] = []
+    monkeypatch.setattr("phonebot.cli._resolve_inputs", lambda sample, data_dir: [])
+
+    async def fake_run_batch(
+        inputs: list[object],
+        config: PipelineConfig,
+        *,
+        output_dir: Path = Path("outputs"),
+    ) -> PipelineOutput:
+        captured.append(config)
+        return await _fake_run_batch(inputs, config, output_dir=output_dir)
+
+    monkeypatch.setattr("phonebot.cli.run_batch", fake_run_batch)
+
+    result = runner.invoke(app, ["--samples", "failed", "--eval", "false"])
+
+    assert result.exit_code == 0
+    assert "Processing 0 recordings [failed]" in result.output
+    assert captured[0].sample == "failed"
+
+
+def test_resolve_inputs_failed_uses_failed_split_only(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "splits.json").write_text(
+        json.dumps(
+            {
+                "dev": ["call_01", "call_02"],
+                "test": ["call_03"],
+                "failed": ["call_02", "call_03"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    inputs = _resolve_inputs("failed", data_dir)
+
+    assert [audio.id for audio in inputs] == ["call_02", "call_03"]
+    assert [audio.file for audio in inputs] == [
+        data_dir / "recordings" / "call_02.wav",
+        data_dir / "recordings" / "call_03.wav",
+    ]

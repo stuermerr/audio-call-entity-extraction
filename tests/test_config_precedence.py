@@ -211,3 +211,9 @@ def test_non_diarized_run_does_not_require_hf_token() -> None:
     assert config.transcriber == "whisperx"
     assert config.diarization_enabled is False
     assert config.hf_token == ""
+
+
+def test_failed_sample_is_valid() -> None:
+    config = PipelineConfig(transcriber="whisperx", extractor="presidio", sample="failed")
+
+    assert config.sample == "failed"
