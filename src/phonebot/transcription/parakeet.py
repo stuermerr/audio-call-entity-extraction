@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from typing import ClassVar
+import inspect
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -39,6 +41,7 @@ class ParakeetTranscriber(TranscriberBase):
 
         self._nemo_asr = _nemo_asr
         self._model_name = config.parakeet_model
+        self._language = _parakeet_language_arg(config.parakeet_language)
 
         # Eager model load: surfaces GPU OOM or missing-model errors at batch
         # start, not mid-run — same reasoning as WhisperX's eager load.
@@ -59,7 +62,10 @@ class ParakeetTranscriber(TranscriberBase):
 
         NeMo returns a list[Hypothesis]; .text is the transcript string.
         """
-        hypotheses = self._model.transcribe([str(audio.file)])
+        hypotheses = self._model.transcribe(
+            [str(audio.file)],
+            **_parakeet_language_kwargs(self._model.transcribe, self._language),
+        )
         raw_text = hypotheses[0].text.strip()
         return TranscriptionResult(
             id=audio.id,
@@ -67,3 +73,35 @@ class ParakeetTranscriber(TranscriberBase):
             segments=None,
             supports_diarization=False,
         )
+
+
+def _parakeet_language_arg(config_language: str) -> str:
+    """Translate the public config sentinel to Parakeet's auto-detect language code."""
+    if config_language == "auto":
+        return "multi"
+    return config_language
+
+
+def _parakeet_language_kwargs(
+    transcribe: Callable[..., Any],
+    language: str,
+) -> dict[str, str]:
+    """Return the supported language kwarg for the loaded Parakeet implementation.
+
+    NVIDIA NIM exposes this knob as ``language`` / ``language-code``. The NeMo
+    prompt-enabled Parakeet class accepts the same values as ``target_lang``.
+    Older non-prompt NeMo ASR classes have no language override, so no kwarg is
+    sent to avoid breaking local inference.
+    """
+    try:
+        parameters = inspect.signature(transcribe).parameters
+    except (TypeError, ValueError):
+        return {"target_lang": language}
+
+    if "language" in parameters:
+        return {"language": language}
+    if "target_lang" in parameters:
+        return {"target_lang": language}
+    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
+        return {"target_lang": language}
+    return {}

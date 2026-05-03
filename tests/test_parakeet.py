@@ -8,7 +8,11 @@ import pytest
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput
-from phonebot.transcription.parakeet import ParakeetTranscriber
+from phonebot.transcription.parakeet import (
+    ParakeetTranscriber,
+    _parakeet_language_arg,
+    _parakeet_language_kwargs,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -20,6 +24,7 @@ def _make_transcriber() -> ParakeetTranscriber:
     t = ParakeetTranscriber.__new__(ParakeetTranscriber)
     t._model = MagicMock()
     t._model_name = "nvidia/parakeet-tdt-0.6b-v3"
+    t._language = _parakeet_language_arg("auto")
     return t
 
 
@@ -44,7 +49,29 @@ def test_gpu_disabled_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 2: primary success path — raw_text, segments=None, supports_diarization=False
+# Test 2: public language sentinel maps to Parakeet/NIM auto-detect code
+# ---------------------------------------------------------------------------
+
+
+def test_parakeet_language_auto_maps_to_multi() -> None:
+    assert _parakeet_language_arg("auto") == "multi"
+    assert _parakeet_language_arg("de-DE") == "de-DE"
+
+
+# ---------------------------------------------------------------------------
+# Test 3: language kwarg uses NeMo prompt parameter when supported
+# ---------------------------------------------------------------------------
+
+
+def test_parakeet_language_kwargs_use_target_lang_for_prompt_model() -> None:
+    def transcribe(audio: list[str], **prompt: str) -> None:
+        pass
+
+    assert _parakeet_language_kwargs(transcribe, "de-DE") == {"target_lang": "de-DE"}
+
+
+# ---------------------------------------------------------------------------
+# Test 4: primary success path — raw_text, segments=None, supports_diarization=False
 # ---------------------------------------------------------------------------
 
 
@@ -63,11 +90,11 @@ def test_transcribe_non_diarized(tmp_path: Path) -> None:
     assert result.segments is None
     assert result.supports_diarization is False
 
-    t._model.transcribe.assert_called_once_with([str(audio.file)])
+    t._model.transcribe.assert_called_once_with([str(audio.file)], target_lang="multi")
 
 
 # ---------------------------------------------------------------------------
-# Test 3: .strip() guards against leading/trailing whitespace from NeMo output
+# Test 5: .strip() guards against leading/trailing whitespace from NeMo output
 # ---------------------------------------------------------------------------
 
 
@@ -85,7 +112,7 @@ def test_transcribe_strips_whitespace(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 4: blocking GPU call is offloaded to a thread via asyncio.to_thread
+# Test 6: blocking GPU call is offloaded to a thread via asyncio.to_thread
 # ---------------------------------------------------------------------------
 
 

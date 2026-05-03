@@ -49,6 +49,7 @@ class PipelineConfig(BaseSettings):
     deepgram_language: str = "default"
     deepgram_smart_format: bool = True
     parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
+    parakeet_language: str = "auto"
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid

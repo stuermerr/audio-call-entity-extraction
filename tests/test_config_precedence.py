@@ -26,6 +26,8 @@ CONFIG_ENV_VARS = [
     "DEEPGRAM_MODEL",
     "DEEPGRAM_LANGUAGE",
     "DEEPGRAM_SMART_FORMAT",
+    "PARAKEET_MODEL",
+    "PARAKEET_LANGUAGE",
     "OPENAI_API_KEY",
     "DEEPGRAM_API_KEY",
     "HF_TOKEN",
@@ -49,6 +51,8 @@ NON_SECRET_CONFIG_FIELDS = [
     "deepgram_model",
     "deepgram_language",
     "deepgram_smart_format",
+    "parakeet_model",
+    "parakeet_language",
 ]
 
 YAML_VALUES: dict[str, Any] = {
@@ -68,6 +72,8 @@ YAML_VALUES: dict[str, Any] = {
     "deepgram_model": "yaml-deepgram",
     "deepgram_language": "de",
     "deepgram_smart_format": False,
+    "parakeet_model": "yaml-parakeet",
+    "parakeet_language": "de-DE",
 }
 
 DOTENV_VALUES: dict[str, Any] = {
@@ -87,6 +93,8 @@ DOTENV_VALUES: dict[str, Any] = {
     "deepgram_model": "dotenv-deepgram",
     "deepgram_language": "default",
     "deepgram_smart_format": True,
+    "parakeet_model": "dotenv-parakeet",
+    "parakeet_language": "auto",
 }
 
 INIT_VALUES: dict[str, Any] = {
@@ -106,6 +114,8 @@ INIT_VALUES: dict[str, Any] = {
     "deepgram_model": "init-deepgram",
     "deepgram_language": "fr",
     "deepgram_smart_format": False,
+    "parakeet_model": "init-parakeet",
+    "parakeet_language": "fr-FR",
 }
 
 SECRETS = {

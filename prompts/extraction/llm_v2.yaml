@@ -16,7 +16,7 @@ system: |
   - If an extracted email address contains no "@" symbol, locate a known email provider
     name (gmail, yahoo, web, gmx, hotmail, outlook, icloud, t-online, freenet, protonmail,
     etc.) in the string and insert "@" immediately before it.
-  - In email local-parts and domains, a digit "0" that appears in an otherwise alphabetic
+  - In email local/name-parts and domains, a digit "0" that appears in an otherwise alphabetic
     sequence must be reinterpreted as the letter "O" (e.g. "U0L" → "UOL", "0BRIEN" → "OBRIEN").
 
   PHONE RULES
