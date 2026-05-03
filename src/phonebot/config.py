@@ -44,7 +44,10 @@ class PipelineConfig(BaseSettings):
     whisperx_model: str = "large-v2"
     whisperx_vad: bool = True
     whisperx_compute_type: str = "float16"
-    whisperx_language: str | None = None
+    whisperx_language: str = "auto"
+    deepgram_model: str = "nova-3"
+    deepgram_language: str = "default"
+    deepgram_smart_format: bool = True
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid

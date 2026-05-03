@@ -22,7 +22,7 @@ class WhisperXTranscriber(TranscriberBase):
       - gpu_enabled: must be true to use this backend
       - whisperx_model: model size (e.g. large-v2)
       - whisperx_compute_type: float16 | int8 | float32 (VRAM/accuracy tradeoff)
-      - whisperx_language: language hint, e.g. "de"; null = auto-detect
+      - whisperx_language: language hint, e.g. "de"; "auto" = auto-detect
       - whisperx_vad: enable/disable VAD filter during transcription
       - diarization_enabled: whether to run speaker diarization (requires hf_token)
 
@@ -52,7 +52,7 @@ class WhisperXTranscriber(TranscriberBase):
         self._device = "cuda"
         self._model_name = config.whisperx_model
         self._compute_type = config.whisperx_compute_type
-        self._language: str | None = config.whisperx_language or None
+        self._language: str | None = _whisperx_language_arg(config.whisperx_language)
         self._vad: bool = config.whisperx_vad
         self._diarization_enabled = config.diarization_enabled
         self._hf_token = config.hf_token
@@ -142,3 +142,10 @@ class WhisperXTranscriber(TranscriberBase):
             segments=segments,
             supports_diarization=True,
         )
+
+
+def _whisperx_language_arg(config_language: str) -> str | None:
+    """Translate the public config sentinel to WhisperX's auto-detect API value."""
+    if config_language == "auto":
+        return None
+    return config_language

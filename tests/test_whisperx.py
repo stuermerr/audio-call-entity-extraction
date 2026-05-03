@@ -7,7 +7,7 @@ import pytest
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput
-from phonebot.transcription.whisperx import WhisperXTranscriber
+from phonebot.transcription.whisperx import WhisperXTranscriber, _whisperx_language_arg
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -47,12 +47,17 @@ def test_gpu_disabled_raises() -> None:
         whisperx_model="large-v2",
         whisperx_vad=True,
         whisperx_compute_type="float16",
-        whisperx_language=None,
+        whisperx_language="auto",
         diarization_enabled=False,
         hf_token="",
     )
     with pytest.raises(RuntimeError, match="gpu_enabled"):
         WhisperXTranscriber(config)
+
+
+def test_whisperx_language_auto_maps_to_auto_detection() -> None:
+    assert _whisperx_language_arg("auto") is None
+    assert _whisperx_language_arg("de") == "de"
 
 
 # ---------------------------------------------------------------------------
