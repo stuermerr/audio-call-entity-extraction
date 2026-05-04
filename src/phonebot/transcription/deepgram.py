@@ -6,7 +6,6 @@ from deepgram import AsyncDeepgramClient  # type: ignore[import-untyped]
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
-from phonebot.observability import maybe_traceable
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
 from phonebot.transcription.base import TranscriberBase
 
@@ -17,10 +16,9 @@ class DeepgramTranscriber(TranscriberBase):
     Supports both plain transcript (non-diarized) and speaker-segmented
     (diarized) paths via the Deepgram pre-recorded audio API.
 
-    Outer @maybe_traceable traces the entire call (including all retry attempts)
-    as one LangSmith span. Inner @retry handles transient API failures with
-    exponential back-off (up to 3 attempts); reraise=True re-raises the last
-    exception on exhaustion so the pipeline can catch it and produce null CallerInfo.
+    @retry handles transient API failures with exponential back-off (up to
+    3 attempts); reraise=True re-raises the last exception on exhaustion so the
+    pipeline can catch it and produce null CallerInfo.
     """
 
     supports_diarization: ClassVar[bool] = True
@@ -32,7 +30,6 @@ class DeepgramTranscriber(TranscriberBase):
         self._smart_format = config.deepgram_smart_format
         self._client = AsyncDeepgramClient(api_key=config.deepgram_api_key)
 
-    @maybe_traceable("deepgram.transcribe")
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),

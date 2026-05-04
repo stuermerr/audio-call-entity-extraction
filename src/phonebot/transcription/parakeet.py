@@ -8,7 +8,6 @@ from typing import Any, ClassVar
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
-from phonebot.observability import maybe_traceable
 from phonebot.schemas import AudioInput, TranscriptionResult
 from phonebot.transcription.base import TranscriberBase
 
@@ -21,10 +20,9 @@ class ParakeetTranscriber(TranscriberBase):
     speaker diarization. Requires nemo_toolkit[asr] (gpu dependency group)
     and a CUDA-capable GPU (gpu_enabled=True in config).
 
-    Outer @maybe_traceable traces the entire call as one LangSmith span.
-    Inner @retry handles transient failures with exponential back-off (3 attempts).
-    All blocking GPU calls are dispatched via asyncio.to_thread() to avoid
-    freezing the event loop.
+    @retry handles transient failures with exponential back-off (3 attempts).
+    All blocking GPU calls are dispatched via asyncio.to_thread() to avoid freezing
+    the event loop.
     """
 
     supports_diarization: ClassVar[bool] = False
@@ -47,7 +45,6 @@ class ParakeetTranscriber(TranscriberBase):
         # start, not mid-run — same reasoning as WhisperX's eager load.
         self._model = _nemo_asr.models.ASRModel.from_pretrained(model_name=self._model_name)
 
-    @maybe_traceable("parakeet.transcribe")
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),

@@ -206,6 +206,33 @@ async def test_run_single_happy_path(tmp_path: Path) -> None:
     assert case.transcript == "Max Muster max@test.com 015201234567"
 
 
+async def test_run_single_logs_enhancement_step(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    wav = tmp_path / "call_12.wav"
+    wav.write_bytes(b"RIFF....")
+    audio = AudioInput(id="call_12", file=wav)
+    config = _make_config().model_copy(update={"denoising_enabled": True})
+
+    caplog.set_level(logging.INFO, logger="test_pipeline")
+
+    await run_single(
+        audio,
+        config,
+        _make_logger(),
+        transcriber=MockTranscriber(),
+        extractor=MockExtractor(),
+        prompt=_make_prompt(),
+        preprocessor=_make_preprocessor(),
+        diarizer=_make_diarizer(),
+        idx=2,
+        total=10,
+    )
+
+    assert "[3/10] call_12 — enhancing audio" in caplog.messages
+
+
 # ---------------------------------------------------------------------------
 # Step 15 – File guard: missing file → skip + null CallerInfo, transcript None
 # ---------------------------------------------------------------------------

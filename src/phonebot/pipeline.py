@@ -77,7 +77,9 @@ async def run_single(
             transcript=None,
         )
 
-    # 5b. Preprocessing (passthrough in MVP, never raises)
+    # 5b. Preprocessing (passthrough unless denoising is enabled, never raises)
+    if config.denoising_enabled:
+        logger.info("%s — enhancing audio", prefix)
     audio = await preprocessor.preprocess(audio)
 
     # 5c. Transcription – tenacity reraises after retries, outer except fires once

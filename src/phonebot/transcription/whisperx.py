@@ -7,7 +7,6 @@ from typing import ClassVar
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
-from phonebot.observability import maybe_traceable
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
 from phonebot.transcription.base import TranscriberBase
 
@@ -25,10 +24,9 @@ class WhisperXTranscriber(TranscriberBase):
       - whisperx_language: language hint, e.g. "de"; "auto" = auto-detect
       - diarization_enabled: whether to run speaker diarization (requires hf_token)
 
-    Outer @maybe_traceable traces the entire call as one LangSmith span.
-    Inner @retry handles transient failures with exponential back-off (3 attempts).
-    All blocking GPU calls are dispatched via asyncio.to_thread() to avoid
-    freezing the event loop.
+    @retry handles transient failures with exponential back-off (3 attempts).
+    All blocking GPU calls are dispatched via asyncio.to_thread() to avoid freezing
+    the event loop.
     """
 
     supports_diarization: ClassVar[bool] = True
@@ -75,7 +73,6 @@ class WhisperXTranscriber(TranscriberBase):
         except AttributeError:
             pass  # non-pyannote VAD backend — no-op
 
-    @maybe_traceable("whisperx.transcribe")
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
