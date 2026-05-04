@@ -29,6 +29,9 @@ gpu = [
     "whisperx",
     "nemo_toolkit[asr]",
 ]
+denoise = [
+    "deepfilternet",
+]
 
 [project.scripts]
 phonebot = "phonebot.cli:app"

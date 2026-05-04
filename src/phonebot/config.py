@@ -39,6 +39,7 @@ class PipelineConfig(BaseSettings):
     transcriptions_path: str | None = None
     diarization_enabled: bool = False
     gpu_enabled: bool = False
+    denoising_enabled: bool = False
     langsmith_tracing: bool = False
     extractor_prompt_file: str | None = None
     openai_llm_transcriber_model: str = "gpt-4o-mini-transcribe"

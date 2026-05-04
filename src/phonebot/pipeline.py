@@ -234,7 +234,14 @@ async def run_batch(
     logger.info("Using extraction prompt: %s", prompt_path)
 
     # 6f. Preprocessor + diarizer
-    preprocessor = PreprocessorBase()
+    if config.denoising_enabled:
+        from phonebot.preprocessing.deepfilter import DeepFilterPreprocessor
+
+        work_dir = Path(output_dir) / run_id / "preprocessed"
+        preprocessor: PreprocessorBase = DeepFilterPreprocessor(work_dir)
+        logger.info("Denoising enabled: writing enhanced audio to %s", work_dir)
+    else:
+        preprocessor = PreprocessorBase()
     diarizer = PyAnnoteDiarizer()
 
     # 6g. Persist config snapshot — include resolved prompt path so it is never null
