@@ -17,7 +17,13 @@ from phonebot.extraction.base import (
 )
 from phonebot.pipeline import run_batch, run_single
 from phonebot.preprocessing.base import PreprocessorBase
-from phonebot.schemas import AudioInput, CallerInfo, PipelineCaseResult, TranscriptionResult
+from phonebot.schemas import (
+    AudioInput,
+    CallerInfo,
+    PipelineCaseResult,
+    TranscriptionArtifact,
+    TranscriptionResult,
+)
 from phonebot.transcription import REGISTRY as TRANSCRIPTION_REGISTRY
 from phonebot.transcription import TranscriberBase
 
@@ -86,6 +92,39 @@ class FailingExtractor(ExtractorBase):
         raise RuntimeError("extraction error")
 
 
+class ExplodingTranscriber(TranscriberBase):
+    def __init__(self, config=None) -> None:  # noqa: ANN001
+        raise AssertionError("transcriber should not be initialised")
+
+    async def transcribe(self, audio: AudioInput) -> TranscriptionResult:
+        raise AssertionError("transcriber should not be called")
+
+
+class AlternateTranscriber(TranscriberBase):
+    def __init__(self, config=None) -> None:  # noqa: ANN001
+        pass
+
+    async def transcribe(self, audio: AudioInput) -> TranscriptionResult:
+        return TranscriptionResult(id=audio.id, raw_text="Alternate transcript")
+
+
+class TranscriptEchoExtractor(ExtractorBase):
+    seen_transcripts: list[str] = []
+
+    def __init__(self, config=None) -> None:  # noqa: ANN001
+        pass
+
+    async def extract(
+        self,
+        record_id: str,
+        record_file: str,
+        transcript: str,
+        prompt: PromptTemplate,
+    ) -> CallerInfo:
+        self.seen_transcripts.append(transcript)
+        return CallerInfo(id=record_id, file=record_file, first_name=transcript.split()[0])
+
+
 # ---------------------------------------------------------------------------
 # Step 11 – _make_config: model_construct skips settings-source resolution so
 # tests don't need config.yaml or .env on any particular cwd.
@@ -95,6 +134,8 @@ def _make_config() -> PipelineConfig:
         transcriber="openai_llm",
         extractor="llm",
         sample="dev",
+        extraction_only=False,
+        transcriptions_path=None,
         diarization_enabled=False,
         gpu_enabled=False,
         langsmith_tracing=False,
@@ -131,6 +172,12 @@ def _make_preprocessor() -> PreprocessorBase:
 
 def _make_diarizer() -> PyAnnoteDiarizer:
     return PyAnnoteDiarizer()
+
+
+def _write_prompt(tmp_path: Path) -> Path:
+    prompt_yaml = tmp_path / "prompt.yaml"
+    prompt_yaml.write_text("system: Extract.\nuser: '{{ transcript }}'\n", encoding="utf-8")
+    return prompt_yaml
 
 
 # ---------------------------------------------------------------------------
@@ -245,8 +292,7 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setitem(EXTRACTION_REGISTRY, "llm", MockExtractor)
 
     # Self-contained prompt file so the test is independent of cwd
-    prompt_yaml = tmp_path / "prompt.yaml"
-    prompt_yaml.write_text("system: Extract.\nuser: '{{ transcript }}'\n", encoding="utf-8")
+    prompt_yaml = _write_prompt(tmp_path)
 
     # Two temp wav files
     wav1 = tmp_path / "c1.wav"
@@ -262,6 +308,8 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
         transcriber="openai_llm",
         extractor="llm",
         sample="dev",
+        extraction_only=False,
+        transcriptions_path=None,
         diarization_enabled=False,
         gpu_enabled=False,
         langsmith_tracing=False,
@@ -290,3 +338,148 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
     assert len(data["results"]) == 2
     # cases must NOT appear in the serialised results.json
     assert "cases" not in data
+
+    transcriptions_path = tmp_path / output.run_id / "transcriptions.json"
+    artifact = TranscriptionArtifact.model_validate_json(
+        transcriptions_path.read_text(encoding="utf-8")
+    )
+    assert [t.id for t in artifact.transcriptions] == ["c1", "c2"]
+    assert all(
+        t.raw_text == "Max Muster max@test.com 015201234567" for t in artifact.transcriptions
+    )
+
+
+async def test_run_batch_overwrites_current_transcriptions_artifact(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("phonebot.pipeline.make_run_id", lambda config: "fixed_run")
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "llm", MockExtractor)
+
+    prompt_yaml = _write_prompt(tmp_path)
+    wav = tmp_path / "c1.wav"
+    wav.write_bytes(b"RIFF....")
+    inputs = [AudioInput(id="c1", file=wav)]
+    config = _make_config().model_copy(update={"extractor_prompt_file": str(prompt_yaml)})
+
+    monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "openai_llm", MockTranscriber)
+    await run_batch(inputs, config, output_dir=tmp_path)
+
+    monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "openai_llm", AlternateTranscriber)
+    await run_batch(inputs, config, output_dir=tmp_path)
+
+    artifact = TranscriptionArtifact.model_validate_json(
+        (tmp_path / "fixed_run" / "transcriptions.json").read_text(encoding="utf-8")
+    )
+    assert len(artifact.transcriptions) == 1
+    assert artifact.transcriptions[0].raw_text == "Alternate transcript"
+
+
+async def test_extraction_only_uses_transcripts_and_skips_transcriber(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    TranscriptEchoExtractor.seen_transcripts = []
+    monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "deepgram", ExplodingTranscriber)
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", TranscriptEchoExtractor)
+
+    transcriptions_path = tmp_path / "transcriptions.json"
+    transcriptions_path.write_text(
+        TranscriptionArtifact(
+            transcriptions=[TranscriptionResult(id="c1", raw_text="Saved transcript text")]
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+    prompt_yaml = _write_prompt(tmp_path)
+    config = PipelineConfig.model_construct(
+        transcriber="deepgram",
+        extractor="presidio",
+        sample="dev",
+        extraction_only=True,
+        transcriptions_path=str(transcriptions_path),
+        diarization_enabled=False,
+        gpu_enabled=False,
+        langsmith_tracing=False,
+        extractor_prompt_file=str(prompt_yaml),
+        openai_llm_transcriber_model="gpt-4o-mini-transcribe",
+        openai_llm_diarization_model="gpt-4o-transcribe-diarize",
+        llm_extractor_model="gpt-4.1-mini",
+        whisperx_model="large-v2",
+    )
+
+    output = await run_batch(
+        [AudioInput(id="c1", file=tmp_path / "missing.wav")],
+        config,
+        output_dir=tmp_path,
+    )
+
+    assert output.results[0].first_name == "Saved"
+    assert output.cases[0].transcript == "Saved transcript text"
+    assert TranscriptEchoExtractor.seen_transcripts == ["Saved transcript text"]
+
+
+async def test_extraction_only_fails_fast_for_missing_transcript(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", TranscriptEchoExtractor)
+    transcriptions_path = tmp_path / "transcriptions.json"
+    transcriptions_path.write_text(
+        TranscriptionArtifact(transcriptions=[]).model_dump_json(),
+        encoding="utf-8",
+    )
+    prompt_yaml = _write_prompt(tmp_path)
+    config = PipelineConfig.model_construct(
+        transcriber="deepgram",
+        extractor="presidio",
+        sample="dev",
+        extraction_only=True,
+        transcriptions_path=str(transcriptions_path),
+        diarization_enabled=False,
+        gpu_enabled=False,
+        langsmith_tracing=False,
+        extractor_prompt_file=str(prompt_yaml),
+    )
+
+    with pytest.raises(ValueError, match="Missing transcript.*c1"):
+        await run_batch(
+            [AudioInput(id="c1", file=tmp_path / "missing.wav")],
+            config,
+            output_dir=tmp_path,
+        )
+
+
+async def test_extraction_only_preserves_transcript_on_extraction_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", FailingExtractor)
+    transcriptions_path = tmp_path / "transcriptions.json"
+    transcriptions_path.write_text(
+        TranscriptionArtifact(
+            transcriptions=[TranscriptionResult(id="c1", raw_text="Saved transcript text")]
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+    prompt_yaml = _write_prompt(tmp_path)
+    config = PipelineConfig.model_construct(
+        transcriber="deepgram",
+        extractor="presidio",
+        sample="dev",
+        extraction_only=True,
+        transcriptions_path=str(transcriptions_path),
+        diarization_enabled=False,
+        gpu_enabled=False,
+        langsmith_tracing=False,
+        extractor_prompt_file=str(prompt_yaml),
+    )
+
+    output = await run_batch(
+        [AudioInput(id="c1", file=tmp_path / "missing.wav")],
+        config,
+        output_dir=tmp_path,
+    )
+
+    assert output.results[0].first_name is None
+    assert output.cases[0].transcript == "Saved transcript text"

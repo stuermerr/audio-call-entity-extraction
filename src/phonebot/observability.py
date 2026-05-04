@@ -20,6 +20,8 @@ F = TypeVar("F", bound=Callable)  # type: ignore[type-arg]
 def make_run_id(config: PipelineConfig) -> str:
     """Return a run identifier encoding timestamp and config dimensions."""
     ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+    if config.extraction_only:
+        return f"{ts}_extraction_only_{config.extractor}_{config.sample}"
     return f"{ts}_{config.transcriber}_{config.extractor}_{config.sample}"
 
 

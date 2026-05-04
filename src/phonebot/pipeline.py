@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -16,7 +17,14 @@ from phonebot.extraction.base import (
 )
 from phonebot.observability import get_logger, make_run_id, save_config_snapshot
 from phonebot.preprocessing.base import PreprocessorBase
-from phonebot.schemas import AudioInput, CallerInfo, PipelineCaseResult, PipelineOutput
+from phonebot.schemas import (
+    AudioInput,
+    CallerInfo,
+    PipelineCaseResult,
+    PipelineOutput,
+    TranscriptionArtifact,
+    TranscriptionResult,
+)
 from phonebot.transcription import REGISTRY as TRANSCRIPTION_REGISTRY
 from phonebot.transcription import TranscriberBase
 
@@ -41,6 +49,7 @@ async def run_single(
     prompt: PromptTemplate,
     preprocessor: PreprocessorBase,
     diarizer: PyAnnoteDiarizer,
+    transcription_results: list[TranscriptionResult] | None = None,
     idx: int = 0,
     total: int = 1,
 ) -> PipelineCaseResult:
@@ -86,6 +95,9 @@ async def run_single(
             logger.warning("%s — diarization failed, using raw_text", prefix, exc_info=True)
             # result unchanged → passthrough
 
+    if transcription_results is not None:
+        transcription_results.append(result)
+
     # 5e. Extraction — transcript is preserved even on failure
     logger.info("%s — extracting", prefix)
     try:
@@ -102,6 +114,71 @@ async def run_single(
     return PipelineCaseResult(caller_info=caller_info, transcript=result.raw_text)
 
 
+def _load_transcriptions(path: Path) -> dict[str, TranscriptionResult]:
+    """Load a transcriptions.json artifact and return a call-id lookup."""
+    if not path.exists():
+        raise ValueError(f"Transcriptions file not found: {path}")
+
+    try:
+        artifact = TranscriptionArtifact.model_validate_json(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"Invalid transcriptions file: {path}") from exc
+
+    by_id: dict[str, TranscriptionResult] = {}
+    duplicates: set[str] = set()
+    for transcription in artifact.transcriptions:
+        if transcription.id in by_id:
+            duplicates.add(transcription.id)
+        by_id[transcription.id] = transcription
+
+    if duplicates:
+        duplicate_list = ", ".join(sorted(duplicates))
+        raise ValueError(f"Duplicate transcript id(s) in {path}: {duplicate_list}")
+
+    return by_id
+
+
+def _save_transcriptions(
+    transcriptions: list[TranscriptionResult],
+    run_id: str,
+    output_dir: Path,
+) -> None:
+    """Write the canonical per-run transcript artifact."""
+    transcriptions_path = Path(output_dir) / run_id / "transcriptions.json"
+    transcriptions_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact = TranscriptionArtifact(transcriptions=transcriptions)
+    transcriptions_path.write_text(artifact.model_dump_json(indent=2), encoding="utf-8")
+
+
+async def _run_single_extraction(
+    audio: AudioInput,
+    transcript: TranscriptionResult,
+    logger: logging.Logger,
+    *,
+    extractor: ExtractorBase,
+    prompt: PromptTemplate,
+    idx: int = 0,
+    total: int = 1,
+) -> PipelineCaseResult:
+    """Extract caller info from a preloaded transcript without touching audio."""
+    prefix = f"[{idx + 1}/{total}] {audio.id}"
+
+    logger.info("%s — extracting", prefix)
+    try:
+        caller_info = await extractor.extract(
+            audio.id, str(audio.file), transcript.raw_text, prompt
+        )
+    except Exception:
+        logger.error("%s — extraction failed", prefix, exc_info=True)
+        return PipelineCaseResult(
+            caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
+            transcript=transcript.raw_text,
+        )
+
+    logger.info("%s — done", prefix)
+    return PipelineCaseResult(caller_info=caller_info, transcript=transcript.raw_text)
+
+
 async def run_batch(
     inputs: list[AudioInput],
     config: PipelineConfig,
@@ -115,7 +192,7 @@ async def run_batch(
     ``output_dir/{run_id}/results.json``.
     """
     # 6a. Registry key validation – fail before any I/O
-    if config.transcriber not in TRANSCRIPTION_REGISTRY:
+    if not config.extraction_only and config.transcriber not in TRANSCRIPTION_REGISTRY:
         raise ValueError(
             f"Unknown transcriber '{config.transcriber}'. Valid: {sorted(TRANSCRIPTION_REGISTRY)}"
         )
@@ -125,7 +202,10 @@ async def run_batch(
         )
 
     # 6b. API key validation
-    for key in (config.transcriber, config.extractor):
+    backend_keys = [config.extractor]
+    if not config.extraction_only:
+        backend_keys.append(config.transcriber)
+    for key in backend_keys:
         required_var = _REQUIRED_ENV_VARS.get(key)
         if required_var and not os.environ.get(required_var):
             raise RuntimeError(f"Missing required env var: {required_var} (needed by {key})")
@@ -135,7 +215,9 @@ async def run_batch(
     logger = get_logger(run_id, output_dir)
 
     # 6d. Create backends once per batch (avoids repeated client/prompt init overhead)
-    transcriber = TRANSCRIPTION_REGISTRY[config.transcriber](config)  # type: ignore[call-arg]
+    transcriber: TranscriberBase | None = None
+    if not config.extraction_only:
+        transcriber = TRANSCRIPTION_REGISTRY[config.transcriber](config)  # type: ignore[call-arg]
     extractor = EXTRACTION_REGISTRY[config.extractor](config)  # type: ignore[call-arg]
 
     # 6e. Load prompt once per batch
@@ -157,26 +239,53 @@ async def run_batch(
         extra={"extractor_prompt_file": str(prompt_path)},
     )
 
+    transcriptions_by_id: dict[str, TranscriptionResult] = {}
+    if config.extraction_only:
+        if config.transcriptions_path is None:
+            raise ValueError("transcriptions_path is required when extraction_only=True")
+        transcriptions_by_id = _load_transcriptions(Path(config.transcriptions_path))
+        missing_ids = sorted(audio.id for audio in inputs if audio.id not in transcriptions_by_id)
+        if missing_ids:
+            raise ValueError("Missing transcript(s) for call id(s): " + ", ".join(missing_ids))
+
     # 6h. Sequential processing loop
     total = len(inputs)
     logger.info("Starting batch: %d file(s) [sample=%s]", total, config.sample)
     cases: list[PipelineCaseResult] = []
+    transcriptions: list[TranscriptionResult] = []
     for idx, audio in enumerate(inputs):
-        case = await run_single(
-            audio,
-            config,
-            logger,
-            transcriber=transcriber,
-            extractor=extractor,
-            prompt=prompt,
-            preprocessor=preprocessor,
-            diarizer=diarizer,
-            idx=idx,
-            total=total,
-        )
+        if config.extraction_only:
+            case = await _run_single_extraction(
+                audio,
+                transcriptions_by_id[audio.id],
+                logger,
+                extractor=extractor,
+                prompt=prompt,
+                idx=idx,
+                total=total,
+            )
+        else:
+            if transcriber is None:
+                raise RuntimeError("Transcriber was not initialised")
+            case = await run_single(
+                audio,
+                config,
+                logger,
+                transcriber=transcriber,
+                extractor=extractor,
+                prompt=prompt,
+                preprocessor=preprocessor,
+                diarizer=diarizer,
+                transcription_results=transcriptions,
+                idx=idx,
+                total=total,
+            )
         cases.append(case)
 
     logger.info("Batch complete: %d/%d processed", len(cases), total)
+
+    if not config.extraction_only:
+        _save_transcriptions(transcriptions, run_id, Path(output_dir))
 
     # 6i. Build output model — include resolved prompt path in snapshot
     output = PipelineOutput(

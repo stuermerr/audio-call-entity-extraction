@@ -35,6 +35,8 @@ class PipelineConfig(BaseSettings):
     transcriber: str = "openai_llm"
     extractor: str = "llm"
     sample: Literal["dev", "test", "failed", "all"] = "dev"
+    extraction_only: bool = False
+    transcriptions_path: str | None = None
     diarization_enabled: bool = False
     gpu_enabled: bool = False
     langsmith_tracing: bool = False
@@ -67,19 +69,28 @@ class PipelineConfig(BaseSettings):
     @model_validator(mode="after")
     def _validate_required_keys(self) -> "PipelineConfig":
         """Fail fast only when the configured backend actually needs a key."""
+        if self.extraction_only and not self.transcriptions_path:
+            raise ValueError("transcriptions_path is required when extraction_only=True")
+
         if (
-            self.transcriber in _OPENAI_TRANSCRIBERS or self.extractor in _OPENAI_EXTRACTORS
+            (not self.extraction_only and self.transcriber in _OPENAI_TRANSCRIBERS)
+            or self.extractor in _OPENAI_EXTRACTORS
         ) and not self.openai_api_key:
             raise ValueError(
                 "OPENAI_API_KEY is required for "
                 f"transcriber={self.transcriber!r} / extractor={self.extractor!r}"
             )
 
-        if self.transcriber == "deepgram" and not self.deepgram_api_key:
+        if (
+            not self.extraction_only
+            and self.transcriber == "deepgram"
+            and not self.deepgram_api_key
+        ):
             raise ValueError("DEEPGRAM_API_KEY is required when transcriber='deepgram'")
 
         if (
-            self.diarization_enabled
+            not self.extraction_only
+            and self.diarization_enabled
             and self.transcriber in _HF_DIARIZATION_TRANSCRIBERS
             and not self.hf_token
         ):

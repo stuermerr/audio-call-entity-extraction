@@ -151,6 +151,46 @@ def test_failed_sample_flag_is_accepted(monkeypatch) -> None:
     assert captured[0].sample == "failed"
 
 
+def test_extraction_only_flags_reach_pipeline(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    captured: list[PipelineConfig] = []
+    monkeypatch.setattr("phonebot.cli._resolve_inputs", lambda sample, data_dir: [])
+
+    async def fake_run_batch(
+        inputs: list[object],
+        config: PipelineConfig,
+        *,
+        output_dir: Path = Path("outputs"),
+    ) -> PipelineOutput:
+        captured.append(config)
+        return await _fake_run_batch(inputs, config, output_dir=output_dir)
+
+    monkeypatch.setattr("phonebot.cli.run_batch", fake_run_batch)
+    transcriptions_path = tmp_path / "transcriptions.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "--extraction-only",
+            "--transcriptions-path",
+            str(transcriptions_path),
+            "--eval",
+            "false",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured[0].extraction_only is True
+    assert captured[0].transcriptions_path == str(transcriptions_path)
+
+
+def test_extraction_only_requires_transcriptions_path() -> None:
+    result = runner.invoke(app, ["--extraction-only", "--eval", "false"])
+
+    assert result.exit_code == 1
+    assert "transcriptions_path is required when extraction_only=True" in result.output
+
+
 def test_resolve_inputs_failed_uses_failed_split_only(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()

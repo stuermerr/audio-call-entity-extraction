@@ -94,6 +94,16 @@ def run(
         metavar="true|false",
         help="Run eval after extraction: true|false",
     ),
+    extraction_only: bool = typer.Option(
+        False,
+        "--extraction-only",
+        help="Skip transcription and extract from --transcriptions-path.",
+    ),
+    transcriptions_path: Optional[Path] = typer.Option(
+        None,
+        "--transcriptions-path",
+        help="Path to a transcriptions.json artifact for --extraction-only.",
+    ),
     output_dir: Path = typer.Option(Path("outputs"), "--output-dir", help="Output root directory"),
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
@@ -105,6 +115,10 @@ def run(
         overrides["transcriber"] = transcriber
     if extractor is not None:
         overrides["extractor"] = extractor
+    if extraction_only:
+        overrides["extraction_only"] = extraction_only
+    if transcriptions_path is not None:
+        overrides["transcriptions_path"] = str(transcriptions_path)
     evaluate_enabled = _parse_eval_option(evaluate)
 
     try:
@@ -116,7 +130,11 @@ def run(
     inputs = _resolve_inputs(config.sample, Path("data"))
     typer.echo(f"Processing {len(inputs)} recordings [{config.sample}]…")
 
-    output = asyncio.run(run_batch(inputs, config, output_dir=output_dir))
+    try:
+        output = asyncio.run(run_batch(inputs, config, output_dir=output_dir))
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(f"Pipeline error: {exc}", err=True)
+        raise typer.Exit(1)
 
     if evaluate_enabled:
         ground_truth = _build_ground_truth(Path("data"))

@@ -227,3 +227,26 @@ def test_failed_sample_is_valid() -> None:
     config = PipelineConfig(transcriber="whisperx", extractor="presidio", sample="failed")
 
     assert config.sample == "failed"
+
+
+def test_extraction_only_does_not_require_transcriber_key(tmp_path: Path) -> None:
+    config = PipelineConfig(
+        transcriber="deepgram",
+        extractor="presidio",
+        extraction_only=True,
+        transcriptions_path=str(tmp_path / "transcriptions.json"),
+        deepgram_api_key="",
+    )
+
+    assert config.extraction_only is True
+    assert config.deepgram_api_key == ""
+
+
+def test_extraction_only_requires_transcriptions_path() -> None:
+    with pytest.raises(ValueError, match="transcriptions_path is required"):
+        PipelineConfig(
+            transcriber="deepgram",
+            extractor="presidio",
+            extraction_only=True,
+            transcriptions_path=None,
+        )

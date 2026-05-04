@@ -21,6 +21,7 @@ def _make_transcriber(*, diarization_enabled: bool = False) -> WhisperXTranscrib
     t._model_name = "large-v2"
     t._compute_type = "float16"
     t._language = None
+    t._batch_size = 16
     t._diarization_enabled = diarization_enabled
     t._hf_token = "fake-hf-token"
     t._wx = MagicMock()

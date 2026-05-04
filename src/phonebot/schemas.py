@@ -25,6 +25,10 @@ class TranscriptionResult(BaseModel):
     supports_diarization: bool = False
 
 
+class TranscriptionArtifact(BaseModel):
+    transcriptions: list[TranscriptionResult]
+
+
 class CallerInfo(BaseModel):
     id: str
     file: str

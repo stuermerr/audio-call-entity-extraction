@@ -11,6 +11,7 @@ from phonebot.schemas import (
     EvalResult,
     PipelineCaseResult,
     PipelineOutput,
+    TranscriptionArtifact,
     TranscriptionResult,
 )
 
@@ -28,6 +29,17 @@ def test_transcription_result_defaults() -> None:
     result = TranscriptionResult(id="call_01", raw_text="Hallo, ich bin Max.")
     assert result.segments is None
     assert result.supports_diarization is False
+
+
+def test_transcription_artifact_roundtrip() -> None:
+    artifact = TranscriptionArtifact(
+        transcriptions=[TranscriptionResult(id="call_01", raw_text="Hallo.")]
+    )
+
+    restored = TranscriptionArtifact.model_validate(artifact.model_dump())
+
+    assert restored.transcriptions[0].id == "call_01"
+    assert restored.transcriptions[0].raw_text == "Hallo."
 
 
 def test_caller_info_all_none() -> None:
