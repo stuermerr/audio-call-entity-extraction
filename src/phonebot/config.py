@@ -57,6 +57,12 @@ class PipelineConfig(BaseSettings):
     deepgram_smart_format: bool = True
     parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
     parakeet_language: str = "auto"
+    fastenhancer_model_url: str = (
+        "https://github.com/aask1357/fastenhancer/releases/download/"
+        "onnx-dns-v1.0.0/fastenhancer_b.onnx"
+    )
+    fastenhancer_model_path: str | None = None  # local path override; skips download when set
+    fastenhancer_hop_size: int = 256  # must match model variant: 256 T/B/S, 160 M, 100 L
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid
@@ -72,6 +78,9 @@ class PipelineConfig(BaseSettings):
         """Fail fast only when the configured backend actually needs a key."""
         if self.extraction_only and not self.transcriptions_path:
             raise ValueError("transcriptions_path is required when extraction_only=True")
+
+        if self.denoising_enabled and not self.gpu_enabled:
+            raise ValueError("denoising_enabled=True requires gpu_enabled=True")
 
         if (
             (not self.extraction_only and self.transcriber in _OPENAI_TRANSCRIBERS)

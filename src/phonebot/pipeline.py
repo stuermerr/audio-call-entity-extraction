@@ -235,10 +235,17 @@ async def run_batch(
 
     # 6f. Preprocessor + diarizer
     if config.denoising_enabled:
-        from phonebot.preprocessing.deepfilter import DeepFilterPreprocessor
+        from phonebot.preprocessing.fastenhancer import FastEnhancerPreprocessor
 
         work_dir = Path(output_dir) / run_id / "preprocessed"
-        preprocessor: PreprocessorBase = DeepFilterPreprocessor(work_dir)
+        preprocessor: PreprocessorBase = FastEnhancerPreprocessor(
+            work_dir,
+            model_path=Path(config.fastenhancer_model_path)
+            if config.fastenhancer_model_path
+            else None,
+            model_url=config.fastenhancer_model_url,
+            hop_size=config.fastenhancer_hop_size,
+        )
         logger.info("Denoising enabled: writing enhanced audio to %s", work_dir)
     else:
         preprocessor = PreprocessorBase()

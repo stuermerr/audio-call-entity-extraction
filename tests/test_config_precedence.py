@@ -223,6 +223,17 @@ def test_non_diarized_run_does_not_require_hf_token() -> None:
     assert config.hf_token == ""
 
 
+def test_denoising_requires_gpu_enabled() -> None:
+    with pytest.raises(ValueError, match="denoising_enabled=True requires gpu_enabled=True"):
+        PipelineConfig(
+            transcriber="deepgram",
+            extractor="presidio",
+            denoising_enabled=True,
+            gpu_enabled=False,
+            deepgram_api_key="test-deepgram",
+        )
+
+
 def test_failed_sample_is_valid() -> None:
     config = PipelineConfig(transcriber="whisperx", extractor="presidio", sample="failed")
 

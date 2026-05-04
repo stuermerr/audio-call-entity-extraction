@@ -7,8 +7,9 @@ class PreprocessorBase:
     """Passthrough audio preprocessor.
 
     In MVP this class is a no-op: it returns the AudioInput unchanged.
-    Use ``DeepFilterPreprocessor`` (``phonebot.preprocessing.deepfilter``) when
-    ``config.denoising_enabled=True`` for DeepFilterNet-based noise reduction.
+    Use ``FastEnhancerPreprocessor`` (``phonebot.preprocessing.fastenhancer``) when
+    ``config.denoising_enabled=True`` for GPU-backed ONNX noise reduction with
+    no PyTorch dependency.
     """
 
     async def preprocess(self, audio: AudioInput) -> AudioInput:
