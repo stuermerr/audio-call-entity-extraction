@@ -45,6 +45,10 @@ class PipelineConfig(BaseSettings):
     whisperx_model: str = "large-v2"
     whisperx_compute_type: str = "float16"
     whisperx_language: str = "auto"
+    whisperx_batch_size: int = 16  # ASR inference batch; reduce to 4-8 if CUDA OOM occurs
+    whisperx_vad_batch_size: int = (
+        8  # pyannote VAD segmentation batch; reduce to 2-4 if CUDA OOM occurs
+    )
     deepgram_model: str = "nova-3"
     deepgram_language: str = "default"
     deepgram_smart_format: bool = True

@@ -52,6 +52,7 @@ class WhisperXTranscriber(TranscriberBase):
         self._model_name = config.whisperx_model
         self._compute_type = config.whisperx_compute_type
         self._language: str | None = _whisperx_language_arg(config.whisperx_language)
+        self._batch_size = config.whisperx_batch_size
         self._diarization_enabled = config.diarization_enabled
         self._hf_token = config.hf_token
 
@@ -62,6 +63,17 @@ class WhisperXTranscriber(TranscriberBase):
             self._device,
             compute_type=self._compute_type,
         )
+
+        # Patch the pyannote VAD segmentation batch_size.  whisperx's load_model
+        # accepts batch_size only for the Whisper ASR path; the VAD model (pyannote
+        # Inference) keeps its own hardcoded default of 32 which causes CUDA OOM on
+        # small GPUs.  We override it here after load.
+        try:
+            self._model.vad_model.vad_pipeline._segmentation.batch_size = (
+                config.whisperx_vad_batch_size
+            )
+        except AttributeError:
+            pass  # non-pyannote VAD backend — no-op
 
     @maybe_traceable("whisperx.transcribe")
     @retry(
@@ -79,7 +91,7 @@ class WhisperXTranscriber(TranscriberBase):
 
         result = self._model.transcribe(
             audio_array,
-            batch_size=16,
+            batch_size=self._batch_size,
             language=self._language,
         )
 
