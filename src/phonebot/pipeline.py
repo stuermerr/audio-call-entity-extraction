@@ -15,7 +15,12 @@ from phonebot.extraction.base import (
 from phonebot.extraction.base import (
     REGISTRY as EXTRACTION_REGISTRY,
 )
-from phonebot.observability import get_logger, make_run_id, save_config_snapshot
+from phonebot.observability import (
+    configure_langsmith_tracing,
+    get_logger,
+    make_run_id,
+    save_config_snapshot,
+)
 from phonebot.preprocessing.base import PreprocessorBase
 from phonebot.schemas import (
     AudioInput,
@@ -211,6 +216,7 @@ async def run_batch(
             raise RuntimeError(f"Missing required env var: {required_var} (needed by {key})")
 
     # 6c. Run ID + logger
+    configure_langsmith_tracing(config)
     run_id = make_run_id(config)
     logger = get_logger(run_id, output_dir)
 

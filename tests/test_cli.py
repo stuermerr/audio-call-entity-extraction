@@ -226,7 +226,16 @@ def test_extraction_only_can_be_enabled_from_config_yaml(
     assert captured[0].extractor == "presidio"
 
 
-def test_extraction_only_requires_transcriptions_path() -> None:
+def test_extraction_only_requires_transcriptions_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump({"extraction_only": False, "transcriptions_path": None}),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
     result = runner.invoke(app, ["--extraction-only", "--eval", "false"])
 
     assert result.exit_code == 1

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
 from phonebot.extraction.llm import _ExtractedFields
 from phonebot.normalization import (
@@ -105,8 +104,8 @@ def test_extracted_fields_phone_validator() -> None:
 
 
 def test_extracted_fields_phone_validation_failure() -> None:
-    with pytest.raises(ValidationError):
-        _ExtractedFields(phone_number="not-a-phone")
+    ef = _ExtractedFields(phone_number="not-a-phone")
+    assert ef.phone_number is None
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +119,8 @@ def test_extracted_fields_email_lowercased() -> None:
 
 
 def test_extracted_fields_email_validation_failure() -> None:
-    with pytest.raises(ValidationError):
-        _ExtractedFields(email="noemail")
+    ef = _ExtractedFields(email="noemail")
+    assert ef.email is None
 
 
 # ---------------------------------------------------------------------------

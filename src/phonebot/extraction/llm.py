@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from pathlib import Path
 
 import openai
 from pydantic import BaseModel, field_validator
@@ -10,7 +11,12 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from phonebot.config import PipelineConfig
 from phonebot.extraction.base import _DEFAULT_PROMPT, ExtractorBase, PromptTemplate
 from phonebot.normalization import validate_and_normalize_email, validate_and_normalize_phone
-from phonebot.observability import maybe_traceable
+from phonebot.observability import (
+    configure_langsmith_tracing,
+    langsmith_tracing_enabled,
+    maybe_traceable,
+    suppress_openai_parsed_response_serializer_warning,
+)
 from phonebot.schemas import CallerInfo
 
 _logger = logging.getLogger(__name__)
@@ -31,18 +37,36 @@ class _ExtractedFields(BaseModel):
     @field_validator("phone_number", mode="before")
     @classmethod
     def _normalise_phone(cls, v: object) -> object:
-        """Validate possible phone numbers and normalize them to E.164."""
+        """Validate possible phone numbers and normalize them to E.164.
+
+        Returns ``None`` (rather than raising) when the value is malformed so
+        that a bad phone number does not fail the entire extraction and discard
+        correctly extracted fields.
+        """
         if v is None:
             return None
-        return validate_and_normalize_phone(str(v))
+        try:
+            return validate_and_normalize_phone(str(v))
+        except ValueError:
+            _logger.warning("LLMExtractor: invalid phone number %r — treating as None", v)
+            return None
 
     @field_validator("email", mode="before")
     @classmethod
     def _normalise_email(cls, v: object) -> object:
-        """Validate email syntax and normalize without DNS deliverability checks."""
+        """Validate email syntax and normalize without DNS deliverability checks.
+
+        Returns ``None`` (rather than raising) when the value is malformed so
+        that a bad email address does not fail the entire extraction and discard
+        correctly extracted fields (e.g. name, phone).
+        """
         if v is None:
             return None
-        return validate_and_normalize_email(str(v))
+        try:
+            return validate_and_normalize_email(str(v))
+        except ValueError:
+            _logger.warning("LLMExtractor: invalid email %r — treating as None", v)
+            return None
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
@@ -69,16 +93,39 @@ class LLMExtractor(ExtractorBase):
     """
 
     def __init__(self, config: PipelineConfig) -> None:
+        configure_langsmith_tracing(config)
         prompt_path = (
             _DEFAULT_PROMPT
             if config.extractor_prompt_file is None
-            else __import__("pathlib").Path(config.extractor_prompt_file)
+            else Path(config.extractor_prompt_file)
         )
         self._prompt: PromptTemplate = self.load_prompt(prompt_path)
+        self._prompt_path = prompt_path
         self._model = config.llm_extractor_model
         # Defer client creation so instantiation does not require OPENAI_API_KEY.
         # The key is validated by the SDK only when the first API call is made.
         self._client: openai.AsyncOpenAI | None = None
+
+    def _build_client(self) -> openai.AsyncOpenAI:
+        client = openai.AsyncOpenAI()
+        if not langsmith_tracing_enabled():
+            return client
+
+        suppress_openai_parsed_response_serializer_warning()
+
+        from langsmith.wrappers import wrap_openai  # noqa: PLC0415
+
+        return wrap_openai(
+            client,
+            chat_name="llm.extract.openai_parse",
+            tracing_extra={
+                "metadata": {
+                    "phonebot_stage": "extraction",
+                    "phonebot_backend": "llm",
+                    "extractor_prompt_file": str(self._prompt_path),
+                }
+            },
+        )
 
     @maybe_traceable("llm.extract")
     @retry(
@@ -94,7 +141,7 @@ class LLMExtractor(ExtractorBase):
         prompt: PromptTemplate,
     ) -> CallerInfo:
         if self._client is None:
-            self._client = openai.AsyncOpenAI()
+            self._client = self._build_client()
         user_msg = self.render_user(prompt, transcript)
         messages: list[dict[str, str]] = [
             {"role": "system", "content": prompt.system},

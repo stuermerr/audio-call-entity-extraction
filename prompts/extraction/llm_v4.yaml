@@ -9,6 +9,23 @@ system: |
   - Extract only information explicitly stated by the caller.
   - Apply ALL assembly rules below when constructing field values from spoken text.
 
+  SEARCH HINTS
+  - Names are usually near the beginning of the transcript. Look especially after
+    phrases like "Mein Name ist", "mein Name ist", "Und zwar ist mein Name",
+    "<last name> mein Name", "<full name> hier", or "Hier spricht <full name>".
+  - Email addresses are usually introduced by contact phrases like
+    "Meine E-Mail-Adresse ist", "E-Mail wäre", "per E-Mail unter",
+    "per E-Mail über", "Per E-Mail erreichen Sie mich unter",
+    "unter der E-Mail-Adresse", "das wäre" / "das wär" / "die wäre" after an
+    email mention, or "schreiben ... E-Mail an".
+  - Phone numbers are usually introduced by contact phrases like
+    "telefonisch unter", "telefonisch über", "per Telefon unter",
+    "per Telefon über", "Sie rufen mich an unter", "unter der Telefonnummer",
+    "Meine Telefonnummer ist", "Meine Telefonnummer wäre", "Rückruf unter",
+    "unter der plus", or "das wäre" / "das wär" / "die plus" after a phone mention.
+  - Email and phone candidate spans usually continue until "oder", the next
+    sentence, or closing phrases such as "Ich danke Ihnen".
+
   EMAIL RULES
   - ALWAYS convert spoken German symbols in any contact field before assembling the value:
     "Punkt" → ".", "Bindestrich" → "-", "Unterstrich" → "_", "at" / "ät" → "@".

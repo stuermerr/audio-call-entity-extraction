@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import warnings
 from collections.abc import Callable
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import TypeVar
 
@@ -12,9 +14,18 @@ import yaml
 
 from phonebot.config import PipelineConfig
 
-__all__ = ["make_run_id", "get_logger", "save_config_snapshot", "maybe_traceable"]
+__all__ = [
+    "make_run_id",
+    "get_logger",
+    "save_config_snapshot",
+    "configure_langsmith_tracing",
+    "langsmith_tracing_enabled",
+    "maybe_traceable",
+    "suppress_openai_parsed_response_serializer_warning",
+]
 
 F = TypeVar("F", bound=Callable)  # type: ignore[type-arg]
+_OPENAI_PARSED_RESPONSE_WARNING_FILTER_INSTALLED = False
 
 
 def make_run_id(config: PipelineConfig) -> str:
@@ -125,12 +136,71 @@ def save_config_snapshot(
         yaml.safe_dump(data, fh)
 
 
-def maybe_traceable(name: str) -> Callable[[F], F]:
-    """Return @langsmith.traceable(name=name) when tracing is enabled, else identity."""
+def configure_langsmith_tracing(config: PipelineConfig) -> None:
+    """Mirror PipelineConfig tracing fields into env vars used by LangSmith."""
+    os.environ["LANGSMITH_TRACING"] = "true" if config.langsmith_tracing else "false"
+    if config.langsmith_api_key:
+        os.environ["LANGSMITH_API_KEY"] = config.langsmith_api_key
+
+
+def langsmith_tracing_enabled() -> bool:
+    """Return whether LangSmith tracing can emit runs in this process."""
     tracing_on = os.environ.get("LANGSMITH_TRACING", "").lower() == "true"
     has_key = bool(os.environ.get("LANGSMITH_API_KEY"))
-    if tracing_on and has_key:
-        import langsmith  # noqa: PLC0415
+    return tracing_on and has_key
 
-        return langsmith.traceable(name=name)  # type: ignore[return-value]
-    return lambda fn: fn  # type: ignore[return-value]
+
+def suppress_openai_parsed_response_serializer_warning() -> None:
+    """Hide only the known OpenAI parsed-response serializer warning.
+
+    LangSmith's OpenAI wrapper serializes ``ParsedChatCompletion`` objects for
+    traces. With OpenAI SDK parsed responses, Pydantic may warn that the
+    ``parsed`` field expected ``None`` even though it serializes correctly.
+    Keep the filter narrow so unrelated serializer warnings remain visible.
+    """
+    global _OPENAI_PARSED_RESPONSE_WARNING_FILTER_INSTALLED
+    if _OPENAI_PARSED_RESPONSE_WARNING_FILTER_INSTALLED:
+        return
+
+    warnings.filterwarnings(
+        "ignore",
+        message=(
+            r"(?s)Pydantic serializer warnings:.*"
+            r"field_name='parsed'.*"
+            r"input_type=_ExtractedFields"
+        ),
+        category=UserWarning,
+        module=r"pydantic\.main",
+    )
+    _OPENAI_PARSED_RESPONSE_WARNING_FILTER_INSTALLED = True
+
+
+def maybe_traceable(name: str) -> Callable[[F], F]:
+    """Trace calls when LangSmith is enabled at runtime, else call through."""
+
+    def decorator(fn: F) -> F:
+        @wraps(fn)
+        async def async_wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+            if langsmith_tracing_enabled():
+                import langsmith  # noqa: PLC0415
+
+                traced = langsmith.traceable(name=name)(fn)
+                return await traced(*args, **kwargs)
+            return await fn(*args, **kwargs)
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+            if langsmith_tracing_enabled():
+                import langsmith  # noqa: PLC0415
+
+                traced = langsmith.traceable(name=name)(fn)
+                return traced(*args, **kwargs)
+            return fn(*args, **kwargs)
+
+        import inspect  # noqa: PLC0415
+
+        if inspect.iscoroutinefunction(fn):
+            return async_wrapper  # type: ignore[return-value]
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
