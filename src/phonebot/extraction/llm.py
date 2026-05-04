@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Annotated
 
 import openai
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.extraction.base import _DEFAULT_PROMPT, ExtractorBase, PromptTemplate
-from phonebot.normalization import clean_phone
+from phonebot.normalization import validate_and_normalize_email, validate_and_normalize_phone
 from phonebot.observability import maybe_traceable
 from phonebot.schemas import CallerInfo
 
@@ -20,31 +19,30 @@ _logger = logging.getLogger(__name__)
 class _ExtractedFields(BaseModel):
     """Structured output schema for OpenAI parse(); kept internal to avoid polluting schemas.py.
 
-    Validators run in ``mode="before"`` so they fire before type coercion and before
-    the ``Field(pattern=...)`` constraint check.  This means the pattern always sees
-    a pre-cleaned value, making the constraint a hard post-normalization assertion.
+    Validators run in ``mode="before"`` so Python-owned normalization and validation
+    happen before values are copied into the public ``CallerInfo`` model.
     """
 
     first_name: str | None = None
     last_name: str | None = None
-    email: Annotated[str, Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")] | None = None
-    phone_number: Annotated[str, Field(pattern=r"^\+\d+$")] | None = None
+    email: str | None = None
+    phone_number: str | None = None
 
     @field_validator("phone_number", mode="before")
     @classmethod
     def _normalise_phone(cls, v: object) -> object:
-        """Strip spaces, hyphens, and parentheses before the pattern constraint fires."""
+        """Validate possible phone numbers and normalize them to E.164."""
         if v is None:
             return None
-        return clean_phone(str(v))
+        return validate_and_normalize_phone(str(v))
 
     @field_validator("email", mode="before")
     @classmethod
     def _normalise_email(cls, v: object) -> object:
-        """Lowercase and strip email addresses — Python owns this transform."""
+        """Validate email syntax and normalize without DNS deliverability checks."""
         if v is None:
             return None
-        return str(v).lower().strip()
+        return validate_and_normalize_email(str(v))
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod

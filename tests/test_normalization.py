@@ -6,7 +6,12 @@ import pytest
 from pydantic import ValidationError
 
 from phonebot.extraction.llm import _ExtractedFields
-from phonebot.normalization import clean_phone
+from phonebot.normalization import (
+    clean_phone,
+    normalize_phone,
+    validate_and_normalize_email,
+    validate_and_normalize_phone,
+)
 
 # ---------------------------------------------------------------------------
 # clean_phone
@@ -30,7 +35,67 @@ def test_clean_phone_preserves_plus() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _ExtractedFields — phone_number validator + pattern
+# normalize_phone
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_phone_uses_phonenumbers_for_e164() -> None:
+    assert normalize_phone("+49 152 11223456") == "+4915211223456"
+
+
+def test_normalize_phone_uses_phonenumbers_for_0049() -> None:
+    assert normalize_phone("0049152 11223456") == "+4915211223456"
+
+
+def test_normalize_phone_uses_phonenumbers_for_german_national_trunk() -> None:
+    assert normalize_phone("0152 11223456") == "+4915211223456"
+
+
+# ---------------------------------------------------------------------------
+# validate_and_normalize_phone
+# ---------------------------------------------------------------------------
+
+
+def test_validate_and_normalize_phone_e164() -> None:
+    assert validate_and_normalize_phone("+49 152 11223456") == "+4915211223456"
+
+
+def test_validate_and_normalize_phone_0049() -> None:
+    assert validate_and_normalize_phone("0049152 11223456") == "+4915211223456"
+
+
+def test_validate_and_normalize_phone_german_national_trunk() -> None:
+    assert validate_and_normalize_phone("0152 11223456") == "+4915211223456"
+
+
+def test_validate_and_normalize_phone_rejects_impossible_number() -> None:
+    with pytest.raises(ValueError):
+        validate_and_normalize_phone("+49 1")
+
+
+# ---------------------------------------------------------------------------
+# validate_and_normalize_email
+# ---------------------------------------------------------------------------
+
+
+def test_validate_and_normalize_email_lowercases_normalized_form() -> None:
+    assert validate_and_normalize_email("Max@Gmail.COM") == "max@gmail.com"
+
+
+def test_validate_and_normalize_email_rejects_invalid_syntax() -> None:
+    with pytest.raises(ValueError):
+        validate_and_normalize_email("noemail")
+
+
+def test_validate_and_normalize_email_does_not_require_dns_deliverability() -> None:
+    assert (
+        validate_and_normalize_email("person@does-not-exist-hopefully-zzzzzz.com")
+        == "person@does-not-exist-hopefully-zzzzzz.com"
+    )
+
+
+# ---------------------------------------------------------------------------
+# _ExtractedFields — phone_number validator
 # ---------------------------------------------------------------------------
 
 
@@ -39,13 +104,13 @@ def test_extracted_fields_phone_validator() -> None:
     assert ef.phone_number == "+49123456789"
 
 
-def test_extracted_fields_phone_pattern_failure() -> None:
+def test_extracted_fields_phone_validation_failure() -> None:
     with pytest.raises(ValidationError):
         _ExtractedFields(phone_number="not-a-phone")
 
 
 # ---------------------------------------------------------------------------
-# _ExtractedFields — email validator + pattern
+# _ExtractedFields — email validator
 # ---------------------------------------------------------------------------
 
 
@@ -54,7 +119,7 @@ def test_extracted_fields_email_lowercased() -> None:
     assert ef.email == "max@gmail.com"
 
 
-def test_extracted_fields_email_pattern_failure() -> None:
+def test_extracted_fields_email_validation_failure() -> None:
     with pytest.raises(ValidationError):
         _ExtractedFields(email="noemail")
 

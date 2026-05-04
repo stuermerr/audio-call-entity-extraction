@@ -953,6 +953,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dnspython"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/8b/57666417c0f90f08bcafa776861060426765fdb422eb10212086fb811d26/dnspython-2.8.0.tar.gz", hash = "sha256:181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f", size = 368251, upload-time = "2025-09-07T18:58:00.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl", hash = "sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af", size = 331094, upload-time = "2025-09-07T18:57:58.071Z" },
+]
+
+[[package]]
 name = "editdistance"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -989,6 +998,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2c/77/850bef8d72ffb9219f0b1aac23fbc1bf7d038ee6ea666f331fa273031aa2/einops-0.8.2.tar.gz", hash = "sha256:609da665570e5e265e27283aab09e7f279ade90c4f01bcfca111f3d3e13f2827", size = 56261, upload-time = "2026-01-26T04:13:17.638Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/09/f8d8f8f31e4483c10a906437b4ce31bdf3d6d417b73fe33f1a8b59e34228/einops-0.8.2-py3-none-any.whl", hash = "sha256:54058201ac7087911181bfec4af6091bb59380360f069276601256a76af08193", size = 65638, upload-time = "2026-01-26T04:13:18.546Z" },
+]
+
+[[package]]
+name = "email-validator"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dnspython" },
+    { name = "idna" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f5/22/900cb125c76b7aaa450ce02fd727f452243f2e91a61af068b40adba60ea9/email_validator-2.3.0.tar.gz", hash = "sha256:9fc05c37f2f6cf439ff414f8fc46d917929974a82244c20eb10231ba60c54426", size = 51238, upload-time = "2025-08-26T13:09:06.831Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/15/545e2b6cf2e3be84bc1ed85613edd75b8aea69807a71c26f4ca6a9258e82/email_validator-2.3.0-py3-none-any.whl", hash = "sha256:80f13f623413e6b197ae73bb10bf4eb0908faf509ad8362c5edeb0be7fd450b4", size = 35604, upload-time = "2025-08-26T13:09:05.858Z" },
 ]
 
 [[package]]
@@ -3618,9 +3640,11 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "deepgram-sdk" },
+    { name = "email-validator" },
     { name = "jinja2" },
     { name = "langsmith" },
     { name = "openai" },
+    { name = "phonenumbers" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -3645,9 +3669,11 @@ gpu = [
 [package.metadata]
 requires-dist = [
     { name = "deepgram-sdk" },
+    { name = "email-validator", specifier = ">=2.3.0" },
     { name = "jinja2" },
     { name = "langsmith" },
     { name = "openai" },
+    { name = "phonenumbers", specifier = ">=9.0.29" },
     { name = "pydantic" },
     { name = "pydantic-settings", specifier = ">=2.3" },
     { name = "python-dotenv" },
@@ -3667,6 +3693,15 @@ dev = [
 gpu = [
     { name = "nemo-toolkit", extras = ["asr"] },
     { name = "whisperx" },
+]
+
+[[package]]
+name = "phonenumbers"
+version = "9.0.29"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/c3/5b544d133241d649317c0ef456df4705cddb3968d31b5f64ec34e98925aa/phonenumbers-9.0.29.tar.gz", hash = "sha256:66455e5c5ca4197aca5a4217d0dc82717a22038292cfa322d5d5e7c46934a214", size = 2300063, upload-time = "2026-04-25T05:35:37.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/65/d932a84540a2d188c5d0dc3a80d7063820588bbc310cc59b4fe48619be9e/phonenumbers-9.0.29-py2.py3-none-any.whl", hash = "sha256:0eb26e0c578aa2d56428330d5b4a0a07dac9a452c4387bf76a76a88b1e839ab7", size = 2586805, upload-time = "2026-04-25T05:35:34.081Z" },
 ]
 
 [[package]]
@@ -5557,7 +5592,7 @@ name = "triton"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "setuptools", marker = "platform_machine != 's390x' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7d/39/43325b3b651d50187e591eefa22e236b2981afcebaefd4f2fc0ea99df191/triton-3.4.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7b70f5e6a41e52e48cfc087436c8a28c17ff98db369447bcaff3b887a3ab4467", size = 155531138, upload-time = "2025-07-30T19:58:29.908Z" },

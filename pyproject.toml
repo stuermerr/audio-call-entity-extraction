@@ -13,6 +13,8 @@ dependencies = [
     "tenacity",
     "python-dotenv",
     "langsmith",
+    "phonenumbers>=9.0.29",
+    "email-validator>=2.3.0",
 ]
 
 [dependency-groups]
