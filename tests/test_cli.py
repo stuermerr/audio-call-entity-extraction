@@ -184,6 +184,48 @@ def test_extraction_only_flags_reach_pipeline(tmp_path: Path, monkeypatch) -> No
     assert captured[0].transcriptions_path == str(transcriptions_path)
 
 
+def test_extraction_only_can_be_enabled_from_config_yaml(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    transcriptions_path = tmp_path / "saved_transcriptions.json"
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "transcriber": "deepgram",
+                "extractor": "presidio",
+                "sample": "failed",
+                "extraction_only": True,
+                "transcriptions_path": str(transcriptions_path),
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    captured: list[PipelineConfig] = []
+    monkeypatch.setattr("phonebot.cli._resolve_inputs", lambda sample, data_dir: [])
+
+    async def fake_run_batch(
+        inputs: list[object],
+        config: PipelineConfig,
+        *,
+        output_dir: Path = Path("outputs"),
+    ) -> PipelineOutput:
+        captured.append(config)
+        return await _fake_run_batch(inputs, config, output_dir=output_dir)
+
+    monkeypatch.setattr("phonebot.cli.run_batch", fake_run_batch)
+
+    result = runner.invoke(app, ["--eval", "false"])
+
+    assert result.exit_code == 0
+    assert "Processing 0 recordings [failed]" in result.output
+    assert captured[0].extraction_only is True
+    assert captured[0].transcriptions_path == str(transcriptions_path)
+    assert captured[0].transcriber == "deepgram"
+    assert captured[0].extractor == "presidio"
+
+
 def test_extraction_only_requires_transcriptions_path() -> None:
     result = runner.invoke(app, ["--extraction-only", "--eval", "false"])
 

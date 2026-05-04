@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
+from phonebot.normalization import normalize_phone
 from phonebot.schemas import (
     CallerInfo,
     CaseReport,
@@ -24,25 +24,6 @@ _ENTITY_HEADERS: dict[str, str] = {
 }
 
 _MAX_TRANSCRIPT_CHARS = 5000
-
-
-def normalize_phone(s: str) -> str:
-    """Normalise a German phone number to E.164 format where possible.
-
-    Handles three common prefix forms:
-    - ``+49…``   → strip internal whitespace/dashes/parens, keep as-is
-    - ``0049…``  → replace leading ``0049`` with ``+49``
-    - ``0…``     → replace leading ``0`` with ``+49`` (national trunk)
-    - Otherwise  → return stripped string unchanged (avoids silent corruption)
-    """
-    stripped = re.sub(r"[\s\-()]", "", s)
-    if stripped.startswith("+49"):
-        return stripped
-    if stripped.startswith("0049"):
-        return "+49" + stripped[4:]
-    if stripped.startswith("0"):
-        return "+49" + stripped[1:]
-    return stripped
 
 
 def match_field(

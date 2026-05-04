@@ -9,7 +9,7 @@ import yaml
 
 from phonebot.schemas import CallerInfo
 
-_DEFAULT_PROMPT = Path("prompts/extraction/llm.yaml")
+_DEFAULT_PROMPT = Path("prompts/extraction/llm_v4.yaml")
 
 REGISTRY: dict[str, type[ExtractorBase]] = {}
 """Backend registry. Populated by __init__.py to avoid circular imports."""

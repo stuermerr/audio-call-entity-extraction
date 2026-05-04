@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import logging
+import re
+from typing import Annotated
 
 import openai
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.extraction.base import _DEFAULT_PROMPT, ExtractorBase, PromptTemplate
+from phonebot.normalization import clean_phone
 from phonebot.observability import maybe_traceable
 from phonebot.schemas import CallerInfo
 
@@ -15,12 +18,42 @@ _logger = logging.getLogger(__name__)
 
 
 class _ExtractedFields(BaseModel):
-    """Structured output schema for OpenAI parse(); kept internal to avoid polluting schemas.py."""
+    """Structured output schema for OpenAI parse(); kept internal to avoid polluting schemas.py.
+
+    Validators run in ``mode="before"`` so they fire before type coercion and before
+    the ``Field(pattern=...)`` constraint check.  This means the pattern always sees
+    a pre-cleaned value, making the constraint a hard post-normalization assertion.
+    """
 
     first_name: str | None = None
     last_name: str | None = None
-    email: str | None = None
-    phone_number: str | None = None
+    email: Annotated[str, Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")] | None = None
+    phone_number: Annotated[str, Field(pattern=r"^\+\d+$")] | None = None
+
+    @field_validator("phone_number", mode="before")
+    @classmethod
+    def _normalise_phone(cls, v: object) -> object:
+        """Strip spaces, hyphens, and parentheses before the pattern constraint fires."""
+        if v is None:
+            return None
+        return clean_phone(str(v))
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _normalise_email(cls, v: object) -> object:
+        """Lowercase and strip email addresses — Python owns this transform."""
+        if v is None:
+            return None
+        return str(v).lower().strip()
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _normalise_name(cls, v: object) -> object:
+        """Remove digit and ``@`` parse artifacts from name fields."""
+        if v is None:
+            return None
+        result = re.sub(r"\d+", "", str(v)).replace("@", "").strip()
+        return None if result == "" else result
 
 
 class LLMExtractor(ExtractorBase):
