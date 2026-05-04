@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -123,6 +125,11 @@ class TranscriptEchoExtractor(ExtractorBase):
     ) -> CallerInfo:
         self.seen_transcripts.append(transcript)
         return CallerInfo(id=record_id, file=record_file, first_name=transcript.split()[0])
+
+
+class ExplodingFastEnhancerPreprocessor(PreprocessorBase):
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        raise AssertionError("preprocessor should not be initialised")
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +419,9 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
     TranscriptEchoExtractor.seen_transcripts = []
     monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "deepgram", ExplodingTranscriber)
     monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", TranscriptEchoExtractor)
+    fake_fastenhancer = types.ModuleType("phonebot.preprocessing.fastenhancer")
+    fake_fastenhancer.FastEnhancerPreprocessor = ExplodingFastEnhancerPreprocessor  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "phonebot.preprocessing.fastenhancer", fake_fastenhancer)
 
     transcriptions_path = tmp_path / "transcriptions.json"
     transcriptions_path.write_text(
@@ -428,8 +438,8 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
         extraction_only=True,
         transcriptions_path=str(transcriptions_path),
         diarization_enabled=False,
-        gpu_enabled=False,
-        denoising_enabled=False,
+        gpu_enabled=True,
+        denoising_enabled=True,
         langsmith_tracing=False,
         extractor_prompt_file=str(prompt_yaml),
         openai_llm_transcriber_model="gpt-4o-mini-transcribe",

@@ -236,7 +236,7 @@ async def run_batch(
     logger.info("Using extraction prompt: %s", prompt_path)
 
     # 6f. Preprocessor + diarizer
-    if config.denoising_enabled:
+    if config.denoising_enabled and not config.extraction_only:
         from phonebot.preprocessing.fastenhancer import FastEnhancerPreprocessor
 
         work_dir = Path(output_dir) / run_id / "preprocessed"

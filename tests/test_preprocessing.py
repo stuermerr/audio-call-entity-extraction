@@ -32,6 +32,7 @@ def _install_fake_fastenhancer_deps(
 
     ort = types.ModuleType("onnxruntime")
     ort.get_available_providers = MagicMock(return_value=available_providers)  # type: ignore[attr-defined]
+    ort.preload_dlls = MagicMock()  # type: ignore[attr-defined]
     ort.InferenceSession = MagicMock(return_value=session)  # type: ignore[attr-defined]
 
     librosa = types.ModuleType("librosa")
@@ -90,12 +91,20 @@ def test_fastenhancer_initializes_with_cuda_provider(
         available_providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
     )
 
+    import onnxruntime as ort
+
     from phonebot.preprocessing.fastenhancer import FastEnhancerPreprocessor
 
     model_path = tmp_path / "fastenhancer.onnx"
     model_path.write_bytes(b"fake")
     preprocessor = FastEnhancerPreprocessor(tmp_path / "preprocessed", model_path=model_path)
 
+    ort.preload_dlls.assert_called_once_with(  # type: ignore[attr-defined]
+        cuda=True,
+        cudnn=True,
+        msvc=False,
+        directory="",
+    )
     inference_session.assert_called_once_with(
         str(model_path),
         providers=["CUDAExecutionProvider", "CPUExecutionProvider"],

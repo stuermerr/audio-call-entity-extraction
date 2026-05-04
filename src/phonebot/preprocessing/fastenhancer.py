@@ -84,6 +84,11 @@ class FastEnhancerPreprocessor(PreprocessorBase):
                 f"{available_providers}"
             )
 
+        # ONNX Runtime finds CUDA/cuDNN provider libraries but still needs the
+        # CUDA runtime libraries preloaded when they come from PyPI nvidia-* wheels.
+        if hasattr(ort, "preload_dlls"):
+            ort.preload_dlls(cuda=True, cudnn=True, msvc=False, directory="")  # type: ignore[attr-defined]
+
         if model_path is None:
             model_path = self._ensure_model(model_url, cache_dir)
 
