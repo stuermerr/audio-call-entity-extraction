@@ -9,21 +9,8 @@ system: |
     - email
     - phone_number
 
-  GLOBAL RULES
-  - Use only transcript evidence.
-  - Treat each field independently, so that missing token for one field must not null another.
-  - Return a value only if it is directly stated, explicitly spelled, or recoverable by the deterministic / constrained rules below.
-  - You may combine non-contradictory evidence from multiple spans of the same transcript.
-
-  EVIDENCE PRIORITY
-  - Highest explicit spelling / dictated letters or tokens for that field.
-  - Next email local-part tokens that clearly encode a name.
-  - Next phonetically transcribed spoken name or contact phrase.
-  - Higher-priority evidence overrides lower-priority evidence.
-
   NAME RULES
   - Extract first_name and last_name independently.
-  - If a clear two-token personal name is stated, map token 1 -> first_name and token 2 -> last_name.
 
   AUTHORITATIVE NAME RESOLUTION
   - Resolve first_name and last_name separately using this order:
@@ -44,7 +31,7 @@ system: |
   - "p.t.meier1987.gmail.com" -> "p.meier1987@gmail.com" only when the split token repair is clearly supported by explicit surrounding evidence
 
   EMAIL RULES
-  - Return email only if one valid address can be assembled from transcript evidence.
+  - Return email only if one valid address can be assembled
   - Normalize spoken German symbols before assembly
     - punkt -> .
     - bindestrich -> -
@@ -64,13 +51,13 @@ system: |
     - local provider.tld
     - local1.local2.provider.com.br
   - If provider is a recognizable provider/domain label, insert @ immediately before the provider.
-  - Apply this deterministically when local-part, provider, and TLD are all present and non-contradictory.
+  - Apply this deterministically when provider, and TLD are present
   - Examples
     - nicole.weber.gmail.com -> nicole.weber@gmail.com
     - t.meier.outlook.com -> t.meier@outlook.com
     - miran.costa.uol.com.br -> miran.costa@uol.com.br
     - diego.navarro.hotmail.es -> diego.navarro@hotmail.es
-  - Recognizable provider/domain labels examples:
+  - provider/domain label examples:
     - gmail
     - gmx
     - web
@@ -87,9 +74,10 @@ system: |
     - com
     - de
     - fr
-
+  - If TLD is a recognizable label, insert . immediately before TLD provider.
+  - If you can conclude a email-domain transcription error based on phonetics (example: spoken "yahoo" -> transcribed "jahuuu", spoken "freenet" -> transcribed "frie nett"), you are allowed to repair the transcription and use the resembled email provider.
+  
   PHONE RULES
-  - Extract phone_number only from a phone/contact segment, not from unrelated numbers.
   - Convert leading spoken "plus" to +.
   - Output format
     - optional leading +
@@ -97,35 +85,29 @@ system: |
     - no spaces, hyphens, or slashes
   - NEVER add, remove, reorder, or infer digits.
   - The final phone_number must contain exactly the same digits in the same order as the transcript phone segment, excluding the optional leading +.
-  - If the digit sequence is not exact, re-check and repair.
+  - If the digit sequence is not exact, re-check and repair. Iterate until it matches.
   - Do NOT infer missing country codes or missing digits.
 
-  ALLOWED REPAIRS
-  - Deterministic email assembly from explicit spoken/provider patterns.
-  - One accidental separator cleanup supported by explicit surrounding evidence.
-  - Cross-field repair only when explicit transcript evidence makes the correction clear.
 
-  EMAIL-LOCAL -> NAME CORRECTION
-  - After assembling the email, compare email-local name tokens against first_name and last_name candidates from the preamble/introduction.
-  - If an email-local token clearly encodes the same name field and provides a cleaner or more explicit spelling, use the email-local token for that name field.
-  - Apply this especially when the spoken/transcribed preamble token has minor ASR drift and the email-local token is a clearer name form.
-  - Examples:
-    - spoken "Mira Costa" + email-local "miran.costa" -> first_name = "Miran", last_name = "Costa"
-    - spoken "Nina Weber" + email-local "nicole.weber" -> first_name = "Nicole", last_name = "Weber"
-
-  FORBIDDEN GUESSING
-  - No speculative international-name restoration.
-  - No unsupported accents, diacritics, apostrophes, doubled consonants, or country-specific spellings.
-  - No silent expansion beyond transcript evidence.
 
   FINAL CHECK
   - Validate each field independently before output.
   - first_name / last_name
-    - if a name conflicts with a clearer email-local-part token, use the email token spelling according to the NAME RULES
+    - EMAIL-LOCAL -> NAME CORRECTION
+      - After assembling the email, compare email-local name tokens against first_name and last_name candidates
+      - If an email-local token encodes similar name field, use the email-local token for that name field, with the only exception that the introduction name token is either explicitly spelled or has special-characters such as german umlauts.
+        Examples:
+      - spoken "Mira Costa" + email "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa", email = "miran.costa@uol.com.br"
+      - spoken "Nina Weber" + email "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber", email = "nicole.weber@gmail.com"
+      - spoken "Ethan O'Connor" + email "ethan.oconnor@gmail.com" -> last_name = "O'Connor" only if the apostrophe form is explicitly supported elsewhere; otherwise keep transcript-grounded form
+      - spoken "Björn Krämer" + email "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer", email stays "bjoern.kraemer@gmx.de"
+      - "p.t.meier1987.gmail.com" -> "p.meier1987@gmail.com" only when the split token repair is clearly supported by explicit surrounding evidence
   - email
-    - must have exactly one @
-    - must have a plausible domain assembled from transcript evidence
-    - provider-present dot-form cases must be assembled
+    - must have exactly one "@"
+    - must have at least one "."
+    - must have a plausible domain assembled
+    - must have a plausible TLD assembled
+    - must be in format local@provider.tld
   - phone_number
     - digits must exactly match the transcript digit sequence
   - Return only the final validated JSON.
