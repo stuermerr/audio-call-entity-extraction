@@ -9,125 +9,98 @@ system: |
     - email
     - phone_number
 
-  GLOBAL RULES
-  - Use only transcript evidence.
-  - Treat each field independently, so that missing token for one field must not null another.
-  - Return a value only if it is directly stated, explicitly spelled, or recoverable by the deterministic / constrained rules below.
-  - You may combine non-contradictory evidence from multiple spans of the same transcript.
-
-  EVIDENCE PRIORITY
-  - Highest explicit spelling / dictated letters or tokens for that field.
-  - Next email local-part tokens that clearly encode a name.
-  - Next phonetically transcribed spoken name or contact phrase.
-  - Higher-priority evidence overrides lower-priority evidence.
-
   NAME RULES
   - Extract first_name and last_name independently.
   - If a clear two-token personal name is stated, map token 1 -> first_name and token 2 -> last_name.
 
   AUTHORITATIVE NAME RESOLUTION
-  - Resolve first_name and last_name separately using this order:
-    - 1) If the spoken name token in introduction of transcript explicitly contains a special character or diacritic, prefer that name token for the corresponding name field. The spoken name token in introduction of transcript overrides a conflicting email-local name token only when that spoken name token in introduction of transcript explicitly contains a special character or diacritic that is not present in the email-local token.
-    - 2) Else, if either the spoken name token in introduction of transcript or the email-local name token is explicitly spelled, prefer the spelled version for the corresponding name field.
-    - 3) Else, if the assembled email-local contains a name token that aligns to the spoken name token in introduction of transcript and differs only by a small recoverable mismatch, prefer the email-local name token for for the corresponding name field.
-    - 4) Else, if the assembled email-local clearly contains a name token for that field, prefer the email-local name token for the corresponding name field.
-    - 5) Else, use the spoken name token in introduction of transcript as fallback.
-  - Treat first_name and last_name separately.
-  - This authority logic affects only first_name and last_name.
-  - Do NOT rewrite the email local-part to use special characters or diacritics.
-  - Do NOT infer or restore special characters, diacritics, apostrophes, doubled consonants, or country-specific spellings unless they are explicitly present in the transcript.
-  Examples:
-  - spoken "Mira Costa" + email "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa", email = "miran.costa@uol.com.br"
-  - spoken "Nina Weber" + email "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber", email = "nicole.weber@gmail.com"
-  - spoken "Ethan O'Connor" + email "ethan.oconnor@gmail.com" -> last_name = "O'Connor" only if the apostrophe form is explicitly supported elsewhere; otherwise keep transcript-grounded form
-  - spoken "Björn Krämer" + email "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer", email stays "bjoern.kraemer@gmx.de"
-  - "p.t.meier1987.gmail.com" -> "p.meier1987@gmail.com" only when the split token repair is clearly supported by explicit surrounding evidence
+  Email-local tokens are more reliable than ASR-transcribed spoken names because they are typed characters, not ASR output.
+
+  Priority (apply per field, first_name and last_name separately):
+    1. If either spoken or email-local token is explicitly spelled letter-by-letter (e.g. "M-A-T-T-H-I-A-S"), use that spelled form.
+    2. If the spoken name token has a diacritic or special character (ä, ö, ü, é, etc.) not present in the email-local token, use the spoken token for that name field.
+    3. If the assembled email has a local-part token that can serve as the name for that field, USE the email-local token — even if it differs from the spoken name.
+    4. Else use the spoken name token as fallback.
+
+  This means: PREFER the email-local token by default. Only fall back to spoken when spoken has explicit special characters or was spelled out.
+
+  Examples where email-local wins (rule 3):
+  - spoken "Igor Suppe", email "igors.uppe.uol.com.br" -> first_name = "Igors", last_name = "Uppe"
+  - spoken "Gustav O'Sheil", email "Gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "osheil"
+  - spoken "Mira Costa", email "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa"
+  - spoken "Nina Weber", email "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber"
+
+  Examples where spoken wins (rules 1–2):
+  - spoken letter-by-letter "M-A-T-T-H-I-A-S", email "m.hoffmann" -> first_name = "Matthias" (explicitly spelled)
+  - spoken "Björn Krämer", email "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer" (umlauts in spoken)
+  - spoken "Müller", email "petra-m" -> last_name = "Müller" (umlaut; email has no last name token)
+  - spoken "Peter Nister", email "p.nister@hotmail.com" -> first_name = "Peter" (email local-part is abbreviation) 
+
+  Do NOT infer or restore diacritics, apostrophes, doubled consonants, or country-specific spellings unless explicitly present in the transcript.
 
   EMAIL RULES
-  - Return email only if one valid address can be assembled from transcript evidence.
-  - Normalize spoken German symbols before assembly
+  - Return email only if one valid address can be assembled.
+  - Normalize spoken German symbols:
     - punkt -> .
     - bindestrich -> -
     - minus -> -
     - unterstrich -> _
-    - at -> @
-    - ät -> @
+    - at / ät -> @
   - Reconstruct from explicit letters/tokens when present.
   - Output email in lowercase.
   - In alphabetic email-domain sequences, convert digit 0 to letter o.
 
   DETERMINISTIC EMAIL ASSEMBLY
-  - If the transcript gives a recoverable provider-present pattern, you MUST assemble it into standard email form.
-  - Examples of recoverable forms
-    - local provider tld
+  - If transcript gives a provider-present pattern, you MUST assemble it into standard email form.
+  - Recognizable patterns:
     - local.provider.tld
-    - local provider.tld
-    - local1.local2.provider.com.br
-  - If provider is a recognizable provider/domain label, insert @ immediately before the provider.
-  - Apply this deterministically when local-part, provider, and TLD are all present and non-contradictory.
-  - Examples
+    - local provider tld
+    - local.provider.com.br
+  - Insert @ immediately before the provider label when provider and TLD are present.
+  - Provider label examples: gmail, gmx, web, yahoo, hotmail, outlook, icloud, t-online, freenet, protonmail, uol, libero
+  - NEVER insert @ before a bare TLD with no provider (com, de, fr, es, it, br alone are not providers).
+  - Examples:
     - nicole.weber.gmail.com -> nicole.weber@gmail.com
     - t.meier.outlook.com -> t.meier@outlook.com
     - miran.costa.uol.com.br -> miran.costa@uol.com.br
-    - diego.navarro.hotmail.es -> diego.navarro@hotmail.es
-  - Recognizable provider/domain labels examples:
-    - gmail
-    - gmx
-    - web
-    - yahoo
-    - hotmail
-    - outlook
-    - icloud
-    - t-online
-    - freenet
-    - protonmail
-    - uol
-    - libero
-  - NEVER insert @ before a bare TLD with no provider/domain label, such as only
-    - com
-    - de
-    - fr
+    - peter-m.gmx.de -> peter-m@gmx.de
 
+  PHONETIC PROVIDER REPAIR
+  - If the provider token in the transcript is a phonetic corruption of a known provider, repair it.
+  - Apply when the token phonetically resembles a known provider.
+  - Examples:
+    - "jahu", "jaahu", "jahu.de", "jahu.fr" -> yahoo
+    - "jahuuu" -> yahoo
+    - "frie nett" or "frienett" -> freenet
+    - "gee mail" or "gemail" -> gmail
+    - "hot mail" -> hotmail
+  - After repair, apply deterministic email assembly.
+
+  NAME -> EMAIL LOCAL-PART CORRECTION
+  - After extracting first_name and last_name, compare each against the assembled email local-part.
+  - If an email local-part token is a recognizable single-character ASR corruption of a clearly extracted name (one dropped, substituted, or transposed character), replace the corrupted email token with the extracted name form.
+  - Apply ONLY when the name was clearly stated and the email token is evidently the same name with a minor error.
+  - Do NOT apply when the discrepancy suggests a genuinely different name.
+  - Examples:
+    - spoken "Sophie", email local-part "sopie.dubois" -> email becomes "sophie.dubois@..." (dropped 'h')
+    - spoken "Thomas Neumann", email local-part "thomas.neuman" -> email becomes "thomas.neumann@..." (dropped 'n')
+    - spoken "Gustav", email local-part "gusti" -> do NOT correct email (different name form, not an ASR error)
+  
   PHONE RULES
-  - Extract phone_number only from a phone/contact segment, not from unrelated numbers.
   - Convert leading spoken "plus" to +.
-  - Output format
-    - optional leading +
-    - then digits only
-    - no spaces, hyphens, or slashes
+  - Output format: optional leading +, then digits only, no spaces, hyphens, or slashes.
   - NEVER add, remove, reorder, or infer digits.
-  - The final phone_number must contain exactly the same digits in the same order as the transcript phone segment, excluding the optional leading +.
-  - If the digit sequence is not exact, re-check and repair.
+  - The final phone_number must contain exactly the same digits in the same order as the transcript phone segment (excluding optional leading +).
+  - If not exact, re-check and repair.
   - Do NOT infer missing country codes or missing digits.
 
-  ALLOWED REPAIRS
-  - Deterministic email assembly from explicit spoken/provider patterns.
-  - One accidental separator cleanup supported by explicit surrounding evidence.
-  - Cross-field repair only when explicit transcript evidence makes the correction clear.
-
-  EMAIL-LOCAL -> NAME CORRECTION
-  - After assembling the email, compare email-local name tokens against first_name and last_name candidates from the preamble/introduction.
-  - If an email-local token clearly encodes the same name field and provides a cleaner or more explicit spelling, use the email-local token for that name field.
-  - Apply this especially when the spoken/transcribed preamble token has minor ASR drift and the email-local token is a clearer name form.
-  - Examples:
-    - spoken "Mira Costa" + email-local "miran.costa" -> first_name = "Miran", last_name = "Costa"
-    - spoken "Nina Weber" + email-local "nicole.weber" -> first_name = "Nicole", last_name = "Weber"
-
-  FORBIDDEN GUESSING
-  - No speculative international-name restoration.
-  - No unsupported accents, diacritics, apostrophes, doubled consonants, or country-specific spellings.
-  - No silent expansion beyond transcript evidence.
-
-  FINAL CHECK
-  - Validate each field independently before output.
-  - first_name / last_name
-    - if a name conflicts with a clearer email-local-part token, use the email token spelling according to the NAME RULES
-  - email
-    - must have exactly one @
-    - must have a plausible domain assembled from transcript evidence
-    - provider-present dot-form cases must be assembled
-  - phone_number
-    - digits must exactly match the transcript digit sequence
+  FINAL VALIDATION BEFORE OUTPUT
+  - first_name / last_name: confirm email-local priority was applied (rule 3 above); if email has a name token and spoken lacks diacritic/spelling, use email token.
+  - email:
+    - must have exactly one "@"
+    - must have at least one "."
+    - provider-present dot-form cases must be assembled (not left as dot-form)
+  - phone_number: digits must exactly match the transcript digit sequence.
   - Return only the final validated JSON.
 
 user: |
