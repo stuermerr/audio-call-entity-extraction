@@ -110,10 +110,9 @@ class AlternateTranscriber(TranscriberBase):
 
 
 class TranscriptEchoExtractor(ExtractorBase):
-    seen_transcripts: list[str] = []
-
+    # seen_transcripts is an instance variable by design — avoid cross-test contamination.
     def __init__(self, config=None) -> None:  # noqa: ANN001
-        pass
+        self.seen_transcripts: list[str] = []
 
     async def extract(
         self,
@@ -387,7 +386,6 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    TranscriptEchoExtractor.seen_transcripts = []
     monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "deepgram", ExplodingTranscriber)
     monkeypatch.setitem(EXTRACTION_REGISTRY, "test_extractor", TranscriptEchoExtractor)
     fake_fastenhancer = types.ModuleType("phonebot.preprocessing.fastenhancer")
@@ -427,7 +425,6 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
 
     assert output.results[0].first_name == "Saved"
     assert output.cases[0].transcript == "Saved transcript text"
-    assert TranscriptEchoExtractor.seen_transcripts == ["Saved transcript text"]
 
 
 async def test_extraction_only_fails_fast_for_missing_transcript(

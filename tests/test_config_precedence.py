@@ -15,6 +15,7 @@ CONFIG_ENV_VARS = [
     "SAMPLE",
     "DIARIZATION_ENABLED",
     "GPU_ENABLED",
+    "DENOISING_ENABLED",
     "LANGSMITH_TRACING",
     "EXTRACTOR_PROMPT_FILE",
     "OPENAI_LLM_TRANSCRIBER_MODEL",
@@ -28,6 +29,9 @@ CONFIG_ENV_VARS = [
     "DEEPGRAM_SMART_FORMAT",
     "PARAKEET_MODEL",
     "PARAKEET_LANGUAGE",
+    "FASTENHANCER_MODEL_URL",
+    "FASTENHANCER_MODEL_PATH",
+    "FASTENHANCER_HOP_SIZE",
     "OPENAI_API_KEY",
     "DEEPGRAM_API_KEY",
     "HF_TOKEN",
@@ -40,6 +44,7 @@ NON_SECRET_CONFIG_FIELDS = [
     "sample",
     "diarization_enabled",
     "gpu_enabled",
+    "denoising_enabled",
     "langsmith_tracing",
     "extractor_prompt_file",
     "openai_llm_transcriber_model",
@@ -53,6 +58,9 @@ NON_SECRET_CONFIG_FIELDS = [
     "deepgram_smart_format",
     "parakeet_model",
     "parakeet_language",
+    "fastenhancer_model_url",
+    "fastenhancer_model_path",
+    "fastenhancer_hop_size",
 ]
 
 YAML_VALUES: dict[str, Any] = {
@@ -60,7 +68,8 @@ YAML_VALUES: dict[str, Any] = {
     "extractor": "custom_yaml",
     "sample": "test",
     "diarization_enabled": True,
-    "gpu_enabled": True,
+    "gpu_enabled": False,
+    "denoising_enabled": False,
     "langsmith_tracing": True,
     "extractor_prompt_file": "yaml_prompt.yaml",
     "openai_llm_transcriber_model": "yaml-transcribe",
@@ -68,12 +77,15 @@ YAML_VALUES: dict[str, Any] = {
     "llm_extractor_model": "yaml-llm",
     "whisperx_model": "yaml-whisper",
     "whisperx_compute_type": "int8",
-    "whisperx_language": "de",
+    "whisperx_language": "en",
     "deepgram_model": "yaml-deepgram",
-    "deepgram_language": "de",
+    "deepgram_language": "en",
     "deepgram_smart_format": False,
     "parakeet_model": "yaml-parakeet",
-    "parakeet_language": "de-DE",
+    "parakeet_language": "en-US",
+    "fastenhancer_model_url": "https://yaml-fastenhancer.example/model.onnx",
+    "fastenhancer_model_path": "/yaml/model.onnx",
+    "fastenhancer_hop_size": 256,
 }
 
 DOTENV_VALUES: dict[str, Any] = {
@@ -82,6 +94,7 @@ DOTENV_VALUES: dict[str, Any] = {
     "sample": "all",
     "diarization_enabled": False,
     "gpu_enabled": False,
+    "denoising_enabled": False,
     "langsmith_tracing": False,
     "extractor_prompt_file": "dotenv_prompt.yaml",
     "openai_llm_transcriber_model": "dotenv-transcribe",
@@ -95,6 +108,9 @@ DOTENV_VALUES: dict[str, Any] = {
     "deepgram_smart_format": True,
     "parakeet_model": "dotenv-parakeet",
     "parakeet_language": "auto",
+    "fastenhancer_model_url": "https://dotenv-fastenhancer.example/model.onnx",
+    "fastenhancer_model_path": "/dotenv/model.onnx",
+    "fastenhancer_hop_size": 160,
 }
 
 INIT_VALUES: dict[str, Any] = {
@@ -103,6 +119,7 @@ INIT_VALUES: dict[str, Any] = {
     "sample": "dev",
     "diarization_enabled": True,
     "gpu_enabled": True,
+    "denoising_enabled": True,
     "langsmith_tracing": True,
     "extractor_prompt_file": "init_prompt.yaml",
     "openai_llm_transcriber_model": "init-transcribe",
@@ -116,6 +133,9 @@ INIT_VALUES: dict[str, Any] = {
     "deepgram_smart_format": False,
     "parakeet_model": "init-parakeet",
     "parakeet_language": "fr-FR",
+    "fastenhancer_model_url": "https://init-fastenhancer.example/model.onnx",
+    "fastenhancer_model_path": "/init/model.onnx",
+    "fastenhancer_hop_size": 100,
 }
 
 SECRETS = {

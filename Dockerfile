@@ -28,14 +28,19 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# GPU dependencies can pull source distributions that need a compiler when
-# Python-version-specific wheels are unavailable.
+# ffmpeg is required by pydub (audio I/O on all paths), pyannote/torchcodec
+# (libavutil shared libs), and whisperx. Install unconditionally across all
+# image variants. g++ is only needed for GPU source-distribution builds.
 ARG INSTALL_GROUP
-RUN if [ "$INSTALL_GROUP" = "gpu" ] || [ "$INSTALL_GROUP" = "gpu-benchmark" ]; then \
-        apt-get update && \
-        apt-get install -y --no-install-recommends g++ && \
-        rm -rf /var/lib/apt/lists/*; \
-    fi
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    if [ "$INSTALL_GROUP" = "gpu" ] || [ "$INSTALL_GROUP" = "gpu-benchmark" ]; then \
+        apt-get install -y --no-install-recommends g++; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
+
+# Smoke-test: confirm ffmpeg is on PATH before proceeding with the build.
+RUN ffmpeg -version
 
 # ---------------------------------------------------------------------------
 # Dependencies — copy manifests first so this layer is cached independently

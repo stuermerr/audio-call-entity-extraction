@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 from typer.testing import CliRunner
 
-from phonebot.cli import _resolve_inputs, app
+from phonebot.cli import _resolve_inputs, _build_ground_truth, app
 from phonebot.config import PipelineConfig
 from phonebot.schemas import CallerInfo, PipelineOutput
 
@@ -293,3 +293,17 @@ def test_resolve_inputs_failed_uses_failed_split_only(tmp_path: Path) -> None:
         data_dir / "recordings" / "call_02.wav",
         data_dir / "recordings" / "call_03.wav",
     ]
+
+
+def test_build_ground_truth_missing_file_returns_empty_dict_and_warns(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """_build_ground_truth returns {} and logs a warning when ground_truth.json is absent."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="phonebot.cli"):
+        result = _build_ground_truth(tmp_path)
+
+    assert result == {}
+    assert any("ground_truth.json" in msg for msg in caplog.messages)

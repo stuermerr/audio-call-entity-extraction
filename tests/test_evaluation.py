@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from phonebot.evaluation import Evaluator, match_field
+from phonebot.evaluation import Evaluator, match_field, _MAX_TRANSCRIPT_CHARS
 from phonebot.schemas import CallerInfo, PipelineCaseResult
 
 # ---------------------------------------------------------------------------
@@ -220,3 +220,21 @@ def test_results_md_uses_emoji_match_indicators(tmp_path: Path) -> None:
     assert "❌" not in results_md
     assert "✓" not in results_md
     assert "✗" not in results_md
+
+
+def test_write_results_md_truncates_long_transcript(tmp_path: Path) -> None:
+    """Transcripts longer than _MAX_TRANSCRIPT_CHARS are truncated in the MD output."""
+    run_id = "test_truncation"
+    evaluator = Evaluator(run_id=run_id, output_dir=tmp_path)
+    caller = CallerInfo(id="call_01", file="call_01.wav")
+    long_transcript = "x" * (_MAX_TRANSCRIPT_CHARS + 100)
+    cases = [PipelineCaseResult(caller_info=caller, transcript=long_transcript)]
+    eval_report = evaluator.compare([caller], {})
+
+    results_path = evaluator.write_results_md(cases, {}, {}, eval_report)
+
+    content = results_path.read_text(encoding="utf-8")
+    # The rendered transcript cell must be capped and annotated
+    assert "*(truncated)*" in content
+    # The raw overlong text must NOT appear verbatim beyond the cap
+    assert "x" * (_MAX_TRANSCRIPT_CHARS + 1) not in content

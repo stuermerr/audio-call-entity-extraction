@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
-import os
 import shutil
 from pathlib import Path
 
@@ -36,16 +35,6 @@ from phonebot.schemas import (
 )
 from phonebot.transcription import REGISTRY as TRANSCRIPTION_REGISTRY
 from phonebot.transcription import TranscriberBase
-
-# ---------------------------------------------------------------------------
-# Required environment variable per backend key.
-# Only keys present here are validated; registry validation handles unknown
-# backend names before any batch work starts.
-# ---------------------------------------------------------------------------
-_REQUIRED_ENV_VARS: dict[str, str] = {
-    "openai_llm": "OPENAI_API_KEY",
-    "deepgram": "DEEPGRAM_API_KEY",
-}
 
 # Backends that require CUDA / GPU libraries at runtime.
 _GPU_BACKENDS: frozenset[str] = frozenset({"parakeet", "whisperx"})
@@ -239,15 +228,6 @@ async def run_batch(
             f"Unknown extractor '{config.extractor}'. Valid: {sorted(EXTRACTION_REGISTRY)}"
         )
 
-    # 6b. API key validation
-    backend_keys = [config.extractor]
-    if not config.extraction_only:
-        backend_keys.append(config.transcriber)
-    for key in backend_keys:
-        required_var = _REQUIRED_ENV_VARS.get(key)
-        if required_var and not os.environ.get(required_var):
-            raise RuntimeError(f"Missing required env var: {required_var} (needed by {key})")
-
     # 6b2. GPU availability guard — hard-fail before any I/O if CUDA is required but absent
     if not config.extraction_only:
         _assert_gpu_available(config.transcriber)
@@ -314,9 +294,7 @@ async def run_batch(
 
     transcriptions_by_id: dict[str, TranscriptionResult] = {}
     if config.extraction_only:
-        if config.transcriptions_path is None:
-            raise ValueError("transcriptions_path is required when extraction_only=True")
-        transcriptions_by_id = _load_transcriptions(Path(config.transcriptions_path))
+        transcriptions_by_id = _load_transcriptions(Path(config.transcriptions_path))  # type: ignore[arg-type]
         missing_ids = sorted(audio.id for audio in inputs if audio.id not in transcriptions_by_id)
         if missing_ids:
             raise ValueError("Missing transcript(s) for call id(s): " + ", ".join(missing_ids))

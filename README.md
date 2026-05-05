@@ -117,10 +117,12 @@ FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `co
 
 Two GPU dependency groups are available depending on which transcriber you use:
 
-| Group | Packages | Use with |
-|-------|----------|----------|
-| `gpu-benchmark` | `onnxruntime-gpu`, `librosa`, `scipy` | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build, no torch/CUDA download |
-| `gpu` | above + `whisperx`, `nemo_toolkit[asr]`, torch/CUDA | `whisperx` or `parakeet` transcribers |
+
+| Group           | Packages                                            | Use with                                                                                   |
+| --------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `gpu-benchmark` | `onnxruntime-gpu`, `librosa`, `scipy`               | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build, no torch/CUDA download |
+| `gpu`           | above + `whisperx`, `nemo_toolkit[asr]`, torch/CUDA | `whisperx` or `parakeet` transcribers                                                      |
+
 
 ---
 
@@ -132,6 +134,16 @@ Copy `.env.example` to `.env` and fill in the keys you need:
 
 ```bash
 cp .env.example .env
+```
+
+**System dependency — FFmpeg:** required at runtime by `pydub`, `pyannote`, and `whisperx` for audio decoding. Docker images include it automatically. For local installs:
+
+```bash
+# Debian / Ubuntu
+sudo apt install ffmpeg
+
+# macOS
+brew install ffmpeg
 ```
 
 
@@ -149,7 +161,7 @@ cp .env.example .env
 
 Requires Python `>=3.13, <3.14` and [uv](https://github.com/astral-sh/uv).
 
-**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising (onnxruntime-gpu only, no whisperx/nemo; fastest install, reproduces best-accuracy result)
+**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising (onnxruntime-gpu only, no whisperx/nemo; faster install than full gpu path, reproduces (close-to) best-accuracy results)
 
 ```bash
 cp config_benchmark.yaml config.yaml
@@ -157,7 +169,7 @@ uv sync --frozen --no-dev --group gpu-benchmark
 uv run phonebot
 ```
 
-**GPU** — full local GPU stack (whisperx, parakeet, FastEnhancer; adds torch/CUDA)
+**GPU** — full GPU stack (whisperx, parakeet, FastEnhancer; adds torch/CUDA)
 
 ```bash
 cp config_gpu.yaml config.yaml
@@ -165,7 +177,7 @@ uv sync --frozen --no-dev --group gpu
 uv run phonebot
 ```
 
-**CPU/API**
+**CPU/API** - like GPU-benchmark but without FastEnhancer denoiser
 
 ```bash
 cp config_cpu.yaml config.yaml
@@ -177,10 +189,9 @@ uv run phonebot
 
 ### Docker
 
-`data/` (recordings + ground truth) is baked into the image — no data mount needed.
 The Docker commands stream progress logs and the final extracted results to the terminal. Full artifacts are still written to `outputs/{run_id}/`.
 
-**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising; fastest build, reproduces best-accuracy result — requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU
+**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising; fastest build, reproduces best-accuracy result — requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU. FFmpeg is included in the image.
 
 ```bash
 docker build -t phonebot:gpu-benchmark --build-arg INSTALL_GROUP=gpu-benchmark .
@@ -192,7 +203,7 @@ docker run --rm --gpus all \
   phonebot:gpu-benchmark
 ```
 
-**GPU** — full local GPU stack (whisperx + parakeet + FastEnhancer); requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU
+**GPU** — full local GPU stack (whisperx + parakeet + FastEnhancer); requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU. 
 
 ```bash
 docker build -t phonebot:gpu --build-arg INSTALL_GROUP=gpu .
@@ -369,3 +380,4 @@ data/
 2. Register it in the transcriber registry (see `transcription/base.py`)
 3. Add any new config fields to `PipelineConfig` in `config.py`
 4. Add a corresponding entry to the backend table in this README
+
