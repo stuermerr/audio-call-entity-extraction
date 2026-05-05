@@ -72,6 +72,13 @@ class FastEnhancerPreprocessor(PreprocessorBase):
         cache_dir: Path = _DEFAULT_CACHE_DIR,
         hop_size: int = _HOP_SIZE,
     ) -> None:
+        # Preload CUDA/cuDNN shared libraries from PyPI nvidia-* wheels before
+        # any ORT API call that triggers provider library loading.
+        # Must come first: get_available_providers() and InferenceSession() both
+        # trigger lazy provider library loading, so preload_dlls must precede both.
+        if hasattr(ort, "preload_dlls"):
+            ort.preload_dlls(cuda=True, cudnn=True, msvc=False, directory="")  # type: ignore[attr-defined]
+
         work_dir.mkdir(parents=True, exist_ok=True)
         self._work_dir = work_dir
         self._hop_size = hop_size
@@ -83,11 +90,6 @@ class FastEnhancerPreprocessor(PreprocessorBase):
                 "CUDAExecutionProvider available; got providers: "
                 f"{available_providers}"
             )
-
-        # ONNX Runtime finds CUDA/cuDNN provider libraries but still needs the
-        # CUDA runtime libraries preloaded when they come from PyPI nvidia-* wheels.
-        if hasattr(ort, "preload_dlls"):
-            ort.preload_dlls(cuda=True, cudnn=True, msvc=False, directory="")  # type: ignore[attr-defined]
 
         if model_path is None:
             model_path = self._ensure_model(model_url, cache_dir)

@@ -239,12 +239,12 @@ uv run phonebot \
   --extraction-only \
   --transcriptions-path outputs/<run_id>/transcriptions.json
 
-# Docker (cpu)
-docker run --rm \
+# Docker (gpu-benchmark)
+docker run --rm --gpus all \
   --env-file .env \
-  -v "$PWD/config_cpu.yaml:/app/config.yaml:ro" \
+  -v "$PWD/config_benchmark.yaml:/app/config.yaml:ro" \
   -v "$PWD/outputs:/app/outputs" \
-  phonebot:cpu \
+  phonebot:gpu-benchmark \
     --extraction-only \
     --transcriptions-path outputs/<run_id>/transcriptions.json
 ```

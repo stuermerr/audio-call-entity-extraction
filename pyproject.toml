@@ -36,6 +36,12 @@ gpu-benchmark = [
     "onnxruntime-gpu",
     "librosa",
     "scipy",
+    "nvidia-cublas-cu12>=12.8.4.1",
+    "nvidia-cuda-runtime-cu12>=12.8.90",
+    "nvidia-cudnn-cu12>=9.10.2.21",
+    "nvidia-cuda-nvrtc-cu12>=12.8.93",
+    "nvidia-curand-cu12>=10.3.9.90",
+    "nvidia-cufft-cu12>=11.3.3.83",
 ]
 
 [tool.uv.sources]
