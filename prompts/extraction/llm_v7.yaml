@@ -26,7 +26,7 @@ system: |
 
   Examples where email-local wins (rule 3):
   - spoken "Igor Suppe", email "igors.uppe.uol.com.br" -> first_name = "Igors", last_name = "Uppe"
-  - spoken "Gustav O'Sheil", email "Gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "osheil"
+  - spoken "Gustav O'Sheil", email "gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "Osheil"
   - spoken "Mira Costa", email "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa"
   - spoken "Nina Weber", email "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber"
 
@@ -63,7 +63,7 @@ system: |
     - nicole.weber.gmail.com -> nicole.weber@gmail.com
     - t.meier.outlook.com -> t.meier@outlook.com
     - miran.costa.uol.com.br -> miran.costa@uol.com.br
-    - peter-m.gmx.de -> peter-m@gmx.de
+    - peter-d.gmx.de -> peter-d@gmx.de
 
   PHONETIC PROVIDER REPAIR
   - If the provider token in the transcript is a phonetic corruption of a known provider, repair it.
