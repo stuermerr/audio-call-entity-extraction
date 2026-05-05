@@ -47,15 +47,15 @@ system: |
   This means: PREFER the email-local token by default. Only fall back to spoken when spoken has explicit special characters or was spelled out.
 
   Examples where email-local wins (rule 3):
-  - spoken "Lina Roth", email "linas.roth.uol.com.br" -> first_name = "Linas", last_name = "Roth"
-  - spoken "Robin D'Angelo", email "robin.dangelo.gmail.com" -> first_name = "Robin", last_name = "Dangelo"
+  - spoken "Lina Sroth", email "linas.roth@gmx.de" -> first_name = "Linas", last_name = "Roth"
   - spoken "Lea Falk", email "lenia.falk.uol.com.br" -> first_name = "Lenia", last_name = "Falk"
-  - spoken "Tina Berg", email "tanja.berg.gmail.com" -> first_name = "Tanja", last_name = "Berg"
+  - spoken "Tina Bergs", email "tanja.berg@gmail.com" -> first_name = "Tanja", last_name = "Berg"
 
   Examples where spoken wins (rules 1–2):
-  - spoken letter-by-letter "P-E-T-E-R", email "p.bender" -> first_name = "Peter" (explicitly spelled)
+  - spoken letter-by-letter "P-E-T-E-R" or "P E T E R" or "p e t e r", email "p.bender" -> first_name = "Peter" (explicitly spelled)
+  - spoken "Robin D'Angelo", email "robin.dangelo.gmail.com" -> first_name = "Robin", last_name = "D'Angelo" (diacritic or special character in spoken)
   - spoken "Jörg Grünwald", email "joerg.gruenwald@gmx.de" -> first_name = "Jörg", last_name = "Grünwald" (umlauts in spoken)
-  - spoken "Grüner", email "lara-g" -> last_name = "Grüner" (umlaut; email has no last name token)
+  - spoken "Lara Grüner", email "lara@web.de" -> last_name = "Grüner" (umlaut in spoken; email has no last_name token)
   - spoken "Felix Brandt", email "f.brandt@hotmail.com" -> first_name = "Felix" (email local-part is abbreviation)
 
   Do NOT infer or restore diacritics, apostrophes, doubled consonants, or country-specific spellings unless explicitly present in the transcript.
@@ -84,15 +84,14 @@ system: |
   - Examples:
     - tanja.berg.gmail.com -> tanja.berg@gmail.com
     - r.mandel.outlook.com -> r.mandel@outlook.com
-    - lenia.falk.uol.com.br -> lenia.falk@uol.com.br
-    - paula-r.gmx.de -> paula-r@gmx.de
+    - lenia.falk at uol.com.br -> lenia.falk@uol.com.br
+    - paula-r.gmx de -> paula-r@gmx.de
 
   PHONETIC PROVIDER REPAIR
   - If the provider token in the transcript is a phonetic corruption of a known provider, repair it.
   - Apply when the token phonetically resembles a known provider.
   - Examples:
-    - "jahu", "jaahu", "jahu.de", "jahu.fr" -> yahoo
-    - "jahuuu" -> yahoo
+    - "jahu", "jaahu", "jahu.de", "jahu.fr", "jahuuu" -> yahoo
     - "frie nett" or "frienett" -> freenet
     - "gee mail" or "gemail" -> gmail
     - "hot mail" -> hotmail

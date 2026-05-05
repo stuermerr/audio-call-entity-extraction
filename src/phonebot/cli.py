@@ -41,6 +41,12 @@ def _resolve_inputs(sample: str, data_dir: Path) -> list[AudioInput]:
             call_ids = sorted(set(splits.get("dev", [])) | set(splits.get("test", [])))
         else:
             call_ids = sorted(splits.get(sample, []))
+        if not call_ids:
+            typer.echo(
+                f"Warning: split '{sample}' resolved to 0 recordings. "
+                "Check data/splits.json or run `uv run scripts/split.py`.",
+                err=True,
+            )
         return [AudioInput(id=cid, file=recordings_dir / f"{cid}.wav") for cid in call_ids]
 
     if sample != "all":
@@ -53,7 +59,20 @@ def _resolve_inputs(sample: str, data_dir: Path) -> list[AudioInput]:
         raise typer.Exit(1)
 
     # Fallback: enumerate wav files when splits.json is absent and sample == "all"
+    if not recordings_dir.exists():
+        typer.echo(
+            f"Error: recordings directory not found: {recordings_dir}. "
+            "Ensure data/recordings/ exists and contains the WAV files.",
+            err=True,
+        )
+        raise typer.Exit(1)
     wav_files = sorted(recordings_dir.glob("*.wav"))
+    if not wav_files:
+        typer.echo(
+            f"Warning: no .wav files found in {recordings_dir}. "
+            "The pipeline will process 0 recordings.",
+            err=True,
+        )
     return [AudioInput(id=f.stem, file=f) for f in wav_files]
 
 
@@ -104,6 +123,11 @@ def run(
         "--transcriptions-path",
         help="Path to a transcriptions.json artifact for --extraction-only.",
     ),
+    extractor_prompt_file: Optional[str] = typer.Option(
+        None,
+        "--extractor-prompt-file",
+        help="Path to a custom YAML/Jinja2 extractor prompt file.",
+    ),
     output_dir: Path = typer.Option(Path("outputs"), "--output-dir", help="Output root directory"),
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
@@ -119,6 +143,8 @@ def run(
         overrides["extraction_only"] = extraction_only
     if transcriptions_path is not None:
         overrides["transcriptions_path"] = str(transcriptions_path)
+    if extractor_prompt_file is not None:
+        overrides["extractor_prompt_file"] = extractor_prompt_file
     evaluate_enabled = _parse_eval_option(evaluate)
 
     try:
@@ -132,7 +158,7 @@ def run(
 
     try:
         output = asyncio.run(run_batch(inputs, config, output_dir=output_dir))
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, FileNotFoundError, ImportError) as exc:
         typer.echo(f"Pipeline error: {exc}", err=True)
         raise typer.Exit(1)
 

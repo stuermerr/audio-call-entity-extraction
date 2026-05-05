@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
 import os
@@ -45,6 +46,38 @@ _REQUIRED_ENV_VARS: dict[str, str] = {
     "openai_llm": "OPENAI_API_KEY",
     "deepgram": "DEEPGRAM_API_KEY",
 }
+
+# Backends that require CUDA / GPU libraries at runtime.
+_GPU_BACKENDS: frozenset[str] = frozenset({"parakeet", "whisperx"})
+
+
+def _assert_gpu_available(transcriber: str) -> None:
+    """Raise RuntimeError before any I/O if the configured backend needs CUDA but it is absent.
+
+    Checks are only performed when the transcriber is a known GPU-only backend.
+    Uses a lightweight importlib probe so torch is not imported unconditionally.
+    """
+    if transcriber not in _GPU_BACKENDS:
+        return
+
+    torch_spec = importlib.util.find_spec("torch")
+    if torch_spec is None:
+        raise RuntimeError(
+            f"Transcriber '{transcriber}' requires PyTorch with CUDA, but 'torch' is not "
+            "installed. Install the gpu dependency group (`uv sync --group gpu`) or switch to a "
+            "CPU-friendly config (e.g. copy config_cpu.yaml → config.yaml and set "
+            "transcriber=openai_llm)."
+        )
+
+    import torch  # noqa: PLC0415
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            f"Transcriber '{transcriber}' requires a CUDA-capable GPU, but "
+            "torch.cuda.is_available() returned False. "
+            "Switch to a CPU-friendly config (e.g. copy config_cpu.yaml → config.yaml "
+            "and set transcriber=openai_llm), or run on a machine with a supported GPU."
+        )
 
 
 async def run_single(
@@ -215,6 +248,10 @@ async def run_batch(
         if required_var and not os.environ.get(required_var):
             raise RuntimeError(f"Missing required env var: {required_var} (needed by {key})")
 
+    # 6b2. GPU availability guard — hard-fail before any I/O if CUDA is required but absent
+    if not config.extraction_only:
+        _assert_gpu_available(config.transcriber)
+
     # 6c. Run ID + logger
     configure_langsmith_tracing(config)
     run_id = make_run_id(config)
@@ -223,14 +260,31 @@ async def run_batch(
     # 6d. Create backends once per batch (avoids repeated client/prompt init overhead)
     transcriber: TranscriberBase | None = None
     if not config.extraction_only:
-        transcriber = TRANSCRIPTION_REGISTRY[config.transcriber](config)  # type: ignore[call-arg]
-    extractor = EXTRACTION_REGISTRY[config.extractor](config)  # type: ignore[call-arg]
+        try:
+            transcriber = TRANSCRIPTION_REGISTRY[config.transcriber](config)  # type: ignore[call-arg]
+        except ImportError as exc:
+            raise RuntimeError(
+                f"Failed to initialise transcriber '{config.transcriber}': {exc}. "
+                "If using a GPU backend (parakeet, whisperx), ensure the gpu dependency "
+                "group is installed (`uv sync --group gpu`) and CUDA is available, "
+                "or switch to a CPU-friendly config (e.g. copy config_cpu.yaml → config.yaml)."
+            ) from exc
+    try:
+        extractor = EXTRACTION_REGISTRY[config.extractor](config)  # type: ignore[call-arg]
+    except ImportError as exc:
+        raise RuntimeError(f"Failed to initialise extractor '{config.extractor}': {exc}.") from exc
 
     # 6e. Load prompt once per batch
     prompt_path = (
         Path(config.extractor_prompt_file) if config.extractor_prompt_file else _DEFAULT_PROMPT
     )
-    prompt = ExtractorBase.load_prompt(prompt_path)
+    try:
+        prompt = ExtractorBase.load_prompt(prompt_path)
+    except FileNotFoundError as exc:
+        raise ValueError(
+            f"Prompt file not found: {prompt_path}. "
+            "Check the 'extractor_prompt_file' setting in config.yaml."
+        ) from exc
     logger.info("Using extraction prompt: %s", prompt_path)
 
     # 6f. Preprocessor

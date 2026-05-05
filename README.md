@@ -191,6 +191,7 @@ Options:
       --eval true|false         Run accuracy evaluation after extraction  [default: true]
       --extraction-only         Skip transcription; read from --transcriptions-path
       --transcriptions-path     Path to a saved transcriptions.json artifact
+      --extractor-prompt-file   Path to a custom YAML/Jinja2 extractor prompt file
       --output-dir PATH         Output root  [default: outputs]
 ```
 
@@ -249,6 +250,35 @@ uv run ruff check src tests
 
 # Type-check
 uv run mypy src
+```
+
+### Debug script
+
+`scripts/debug_single_call.py` — single-call debug harness for development. Runs the full pipeline on one recording and writes all artifacts to `outputs/debug/<run_id>/`.
+
+```bash
+uv run python scripts/debug_single_call.py [AUDIO_FILE] [OPTIONS]
+```
+
+```
+Positional:
+  audio_file                    WAV file to process  [default: data/recordings/call_01.wav]
+
+Options:
+  --file PATH                   Audio file (alternative to positional arg)
+  --record-id TEXT              Override record id (defaults to filename stem)
+  --output-dir PATH             Output directory  [default: outputs/debug]
+  --ground-truth PATH           Ground truth JSON for evaluation  [default: data/ground_truth.json]
+                                Omit or point to a missing file to skip evaluation (prints a notice).
+  --transcriber TEXT            Transcriber backend registry key
+  --extractor TEXT              Extractor backend registry key
+  --extractor-prompt-file PATH  Path to a custom YAML/Jinja2 extractor prompt file
+  --extraction-only             Skip transcription; requires --transcriptions-path
+  --transcriptions-path PATH    Path to a saved transcriptions.json artifact
+  --diarization                 Enable speaker diarization (requires HF_TOKEN)
+  --gpu                         Enable GPU acceleration
+  --denoising                   Enable FastEnhancer denoising (requires --gpu)
+  --langsmith-tracing           Enable LangSmith tracing for this run
 ```
 
 ### Project structure
