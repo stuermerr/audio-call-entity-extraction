@@ -99,7 +99,6 @@ class LLMExtractor(ExtractorBase):
             if config.extractor_prompt_file is None
             else Path(config.extractor_prompt_file)
         )
-        self._prompt: PromptTemplate = self.load_prompt(prompt_path)
         self._prompt_path = prompt_path
         self._model = config.llm_extractor_model
         # Defer client creation so instantiation does not require OPENAI_API_KEY.

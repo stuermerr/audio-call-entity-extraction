@@ -5,7 +5,7 @@ diarization_enabled: false  # native for OpenAI LLM/Deepgram
 gpu_enabled: false  # true enables GPU-backed backends (whisperx, parakeet)
 denoising_enabled: false  # true uses FastEnhancer (ONNX GPU); install with `uv sync --group gpu`
 langsmith_tracing: false  # true requires LANGSMITH_API_KEY; traces to LangSmith project
-extractor_prompt_file: prompts/extraction/llm_v10.yaml  # extraction prompt YAML path
+extractor_prompt_file: prompts/extraction/llm_v8_de.yaml  # extraction prompt YAML path
 openai_llm_transcriber_model: gpt-4o-transcribe  # OpenAI model for openai_llm transcription without diarization
 openai_llm_diarization_model: gpt-4o-transcribe-diarize  # OpenAI model for openai_llm when diarization_enabled is true
 llm_extractor_model: gpt-5.4-mini  # OpenAI chat model used by extractor: llm

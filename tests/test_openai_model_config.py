@@ -222,5 +222,5 @@ def test_llm_extractor_wraps_openai_client_for_langsmith(
     assert wrap_calls[0]["tracing_extra"]["metadata"] == {
         "phonebot_stage": "extraction",
         "phonebot_backend": "llm",
-        "extractor_prompt_file": "prompts/extraction/llm_v4.yaml",
+        "extractor_prompt_file": "prompts/extraction/llm_v8_de.yaml",
     }
