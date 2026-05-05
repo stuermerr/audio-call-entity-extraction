@@ -25,6 +25,15 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# GPU dependencies can pull source distributions that need a compiler when
+# Python-version-specific wheels are unavailable.
+ARG INSTALL_GROUP
+RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends g++ && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
 # ---------------------------------------------------------------------------
 # Dependencies — copy manifests first so this layer is cached independently
 # from source changes.
@@ -34,7 +43,6 @@ COPY pyproject.toml uv.lock ./
 # Install all dependencies but not the project package itself yet.
 # GPU group adds: whisperx, onnxruntime-gpu, librosa, scipy (+ torch from
 # the pytorch-cu128 index declared in pyproject.toml).
-ARG INSTALL_GROUP
 RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
         uv sync --frozen --no-dev --group gpu --no-install-project; \
     else \
@@ -54,8 +62,13 @@ COPY prompts/ ./prompts/
 #   -v "$PWD/data:/app/data:ro"
 COPY data/ ./data/
 
-# Install the project package itself (deps already present, so this is fast).
-RUN uv sync --frozen --no-dev --no-deps
+# Install the project package itself. Dependencies are already cached from the
+# earlier sync layer, but keep the selected dependency group consistent.
+RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
+        uv sync --frozen --no-dev --group gpu; \
+    else \
+        uv sync --frozen --no-dev; \
+    fi
 
 # Outputs directory must exist so the pipeline can write even if the volume
 # is not mounted (useful for quick one-off runs).
@@ -69,5 +82,4 @@ RUN mkdir -p /app/outputs
 #   outputs/     →  -v "$PWD/outputs:/app/outputs"   (to retrieve results)
 #   secrets      →  --env-file .env
 # ---------------------------------------------------------------------------
-ENTRYPOINT ["uv", "run", "phonebot"]
-CMD ["--help"]
+ENTRYPOINT ["uv", "run", "--no-sync", "phonebot"]

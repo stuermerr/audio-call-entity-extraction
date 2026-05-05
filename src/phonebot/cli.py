@@ -11,7 +11,7 @@ import typer
 from phonebot.config import PipelineConfig
 from phonebot.evaluation import Evaluator
 from phonebot.pipeline import run_batch
-from phonebot.schemas import AudioInput
+from phonebot.schemas import AudioInput, PipelineOutput
 
 app = typer.Typer(help="Phone-call extraction pipeline CLI.")
 
@@ -93,6 +93,40 @@ def _build_ground_truth(data_dir: Path) -> dict[str, dict]:  # type: ignore[type
     return {rec["id"]: rec["expected"] for rec in data["recordings"]}
 
 
+def _format_cell(value: str | None) -> str:
+    return value if value else "-"
+
+
+def _print_run_results(output: PipelineOutput, output_dir: Path) -> None:
+    """Print a compact results table for terminal and Docker users."""
+    run_dir = Path(output_dir) / output.run_id
+    typer.echo(f"\n--- Results: {output.run_id} ---")
+    typer.echo(f"Artifacts: {run_dir}")
+
+    headers = ["id", "first_name", "last_name", "email", "phone_number"]
+    rows = [
+        [
+            result.id,
+            _format_cell(result.first_name),
+            _format_cell(result.last_name),
+            _format_cell(result.email),
+            _format_cell(result.phone_number),
+        ]
+        for result in output.results
+    ]
+    if not rows:
+        typer.echo("No recordings processed.")
+        return
+
+    widths = [
+        max(len(header), *(len(row[idx]) for row in rows)) for idx, header in enumerate(headers)
+    ]
+    typer.echo("  ".join(header.ljust(widths[idx]) for idx, header in enumerate(headers)))
+    typer.echo("  ".join("-" * width for width in widths))
+    for row in rows:
+        typer.echo("  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
+
+
 @app.command()
 def run(
     samples: Optional[str] = typer.Option(
@@ -171,3 +205,5 @@ def run(
         for field, pct in report.per_entity_accuracy.items():
             typer.echo(f"{field:<14}{pct:.1%}")
         typer.echo(f"{'Overall':<14}{report.overall_accuracy:.1%}")
+
+    _print_run_results(output, output_dir)

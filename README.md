@@ -85,6 +85,38 @@ Default GPU-settings are the same as for the Benchmark run.
 
 ---
 
+## 🧠 Design Decisions
+
+### Modular transcription & extraction backends
+
+`TranscriberBase` and `ExtractorBase` are abstract base classes backed by a runtime `REGISTRY` dict (`transcription/base.py`, `extraction/base.py`). Swapping a backend requires only a `config.yaml` field change — no pipeline code edits. This makes A/B comparison between backends trivial and keeps the core orchestration (`pipeline.py`) backend-agnostic.
+
+### LLM extraction with schema-constrained output
+
+Structured JSON output is enforced via a Pydantic `CallerInfo` model. This tolerates varied LLM phrasing, avoids brittle regex-based parsing, and produces a typed, validatable object. The extraction model is independently configurable from the transcription model via the `llm_extractor_model` config field.
+
+### External versioned prompts
+
+Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, completely decoupled from code. `--extractor-prompt-file` enables runtime swapping for A/B testing without a code commit. Prompt versions are retained in source control alongside the code that consumed them.
+
+### Extraction-only mode & cost separation
+
+`transcriptions.json` persists raw transcripts so prompt-iteration reruns skip expensive transcription API calls. This cleanly separates transcription quality concerns from extraction quality concerns and drastically reduces iteration cost.
+
+### Evaluation layer isolation
+
+`pipeline.py` never sees ground truth; `Evaluator` is a post-processing step that merges predictions with labels after inference. This keeps the runtime path clean and prevents any form of label leakage into the extraction or transcription steps.
+
+### Library-backed normalization
+
+`phonenumbers` (E.164 canonicalization) and `email-validator` replace hand-rolled regexes in `normalization.py`. This makes the normalizers robust to international phone formats and varied email representations while reducing maintenance surface.
+
+### Optional GPU denoising
+
+FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker image. The CPU/API path remains dependency-free and the denoising step can be toggled without any code change.
+
+---
+
 ## 🚀 Usage
 
 ### Prerequisites
@@ -131,6 +163,7 @@ uv run phonebot
 ### Docker
 
 `data/` (recordings + ground truth) is baked into the image — no data mount needed.
+The Docker commands stream progress logs and the final extracted results to the terminal. Full artifacts are still written to `outputs/{run_id}/`.
 
 **GPU** — requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and a CUDA-capable GPU
 
@@ -307,4 +340,3 @@ data/
 2. Register it in the transcriber registry (see `transcription/base.py`)
 3. Add any new config fields to `PipelineConfig` in `config.py`
 4. Add a corresponding entry to the backend table in this README
-

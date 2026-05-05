@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from phonebot.cli import _resolve_inputs, app
 from phonebot.config import PipelineConfig
-from phonebot.schemas import PipelineOutput
+from phonebot.schemas import CallerInfo, PipelineOutput
 
 runner = CliRunner()
 
@@ -141,6 +141,44 @@ def test_failed_sample_flag_is_accepted(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "Processing 0 recordings [failed]" in result.output
     assert captured[0].sample == "failed"
+
+
+def test_cli_prints_run_results(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("phonebot.cli._resolve_inputs", lambda sample, data_dir: [])
+
+    async def fake_run_batch(
+        inputs: list[object],
+        config: PipelineConfig,
+        *,
+        output_dir: Path = Path("outputs"),
+    ) -> PipelineOutput:
+        return PipelineOutput(
+            results=[
+                CallerInfo(
+                    id="call_01",
+                    file="data/recordings/call_01.wav",
+                    first_name="Max",
+                    last_name="Mustermann",
+                    email="max@example.com",
+                    phone_number="+491701234567",
+                )
+            ],
+            run_id="test_run",
+            config_snapshot=config.model_dump(),
+            cases=[],
+        )
+
+    monkeypatch.setattr("phonebot.cli.run_batch", fake_run_batch)
+
+    result = runner.invoke(app, ["--eval", "false"])
+
+    assert result.exit_code == 0
+    assert "--- Results: test_run ---" in result.output
+    assert "Artifacts: outputs/test_run" in result.output
+    assert "call_01" in result.output
+    assert "Max" in result.output
+    assert "max@example.com" in result.output
 
 
 def test_extraction_only_flags_reach_pipeline(tmp_path: Path, monkeypatch) -> None:
