@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:1
 #
-# Single Dockerfile for both CPU/API and GPU paths.
+# Single Dockerfile for CPU/API, GPU, and GPU-benchmark paths.
 #
 # CPU image (default):
 #   docker build -t phonebot:cpu .
 #
-# GPU image (whisperx + onnxruntime-gpu):
+# GPU image (whisperx + onnxruntime-gpu + nemo):
 #   docker build -t phonebot:gpu --build-arg INSTALL_GROUP=gpu .
+#
+# GPU-benchmark image (onnxruntime-gpu + FastEnhancer only — no whisperx/nemo):
+#   docker build -t phonebot:gpu-benchmark --build-arg INSTALL_GROUP=gpu-benchmark .
 #
 # See README.md for runtime usage.
 
@@ -28,7 +31,7 @@ WORKDIR /app
 # GPU dependencies can pull source distributions that need a compiler when
 # Python-version-specific wheels are unavailable.
 ARG INSTALL_GROUP
-RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
+RUN if [ "$INSTALL_GROUP" = "gpu" ] || [ "$INSTALL_GROUP" = "gpu-benchmark" ]; then \
         apt-get update && \
         apt-get install -y --no-install-recommends g++ && \
         rm -rf /var/lib/apt/lists/*; \
@@ -41,10 +44,14 @@ RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
 COPY pyproject.toml uv.lock ./
 
 # Install all dependencies but not the project package itself yet.
-# GPU group adds: whisperx, onnxruntime-gpu, librosa, scipy (+ torch from
-# the pytorch-cu128 index declared in pyproject.toml).
+# gpu:           whisperx, onnxruntime-gpu, librosa, scipy, nemo_toolkit[asr]
+#                (+ torch from pytorch-cu128 index declared in pyproject.toml)
+# gpu-benchmark: onnxruntime-gpu, librosa, scipy only — no whisperx/nemo.
+#                Use with transcriber: openai_llm or deepgram + denoising_enabled: true.
 RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
         uv sync --frozen --no-dev --group gpu --no-install-project; \
+    elif [ "$INSTALL_GROUP" = "gpu-benchmark" ]; then \
+        uv sync --frozen --no-dev --group gpu-benchmark --no-install-project; \
     else \
         uv sync --frozen --no-dev --no-install-project; \
     fi
@@ -66,6 +73,8 @@ COPY data/ ./data/
 # earlier sync layer, but keep the selected dependency group consistent.
 RUN if [ "$INSTALL_GROUP" = "gpu" ]; then \
         uv sync --frozen --no-dev --group gpu; \
+    elif [ "$INSTALL_GROUP" = "gpu-benchmark" ]; then \
+        uv sync --frozen --no-dev --group gpu-benchmark; \
     else \
         uv sync --frozen --no-dev; \
     fi

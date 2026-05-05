@@ -1,3 +1,11 @@
+"""Accuracy evaluation, result reporting, and case-report generation for phonebot.
+
+Compares extracted ``CallerInfo`` objects against a ground-truth dict, computes
+per-field and overall accuracy scores, and writes ``eval.json``, ``case_report.json``,
+and a human-readable ``results.md`` to the run output directory.  Phone-number
+matching uses E.164 normalisation; all other fields use case-insensitive equality.
+"""
+
 from __future__ import annotations
 
 import logging

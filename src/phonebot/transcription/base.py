@@ -1,3 +1,11 @@
+"""Abstract base class and backend registry for transcription backends.
+
+All transcription backends implement ``TranscriberBase`` and register themselves
+in the module-level ``REGISTRY`` dict (populated by ``transcription/__init__.py``
+to avoid circular imports).  The active backend is selected at runtime via the
+``transcriber`` field in ``PipelineConfig``.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

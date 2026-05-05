@@ -32,6 +32,11 @@ gpu = [
     "scipy",
     "nemo_toolkit[asr]",
 ]
+gpu-benchmark = [
+    "onnxruntime-gpu",
+    "librosa",
+    "scipy",
+]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cu128" }

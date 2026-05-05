@@ -1,3 +1,9 @@
+"""Pydantic models used across the phonebot pipeline.
+
+Defines the data contracts for audio inputs, transcription outputs, extraction
+results, evaluation reports, and all on-disk serialisation formats.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,11 +13,15 @@ from pydantic import BaseModel
 
 
 class AudioInput(BaseModel):
+    """A single audio recording identified by a unique string id and its file path."""
+
     id: str
     file: Path
 
 
 class SpeakerSegment(BaseModel):
+    """One diarized speaker turn with its speaker label, time boundaries, and transcript text."""
+
     speaker: str
     start: float
     end: float
@@ -19,6 +29,8 @@ class SpeakerSegment(BaseModel):
 
 
 class TranscriptionResult(BaseModel):
+    """Raw transcription output for a single recording, optionally including diarized segments."""
+
     id: str
     raw_text: str
     segments: list[SpeakerSegment] | None = None
@@ -26,10 +38,19 @@ class TranscriptionResult(BaseModel):
 
 
 class TranscriptionArtifact(BaseModel):
+    """On-disk format of transcriptions.json — a list of TranscriptionResult objects."""
+
     transcriptions: list[TranscriptionResult]
 
 
 class CallerInfo(BaseModel):
+    """Extracted caller entity fields for a single recording.
+
+    Entity fields (first_name, last_name, email, phone_number) are nullable; None
+    indicates the field was not extracted.  The authoritative list of entity fields
+    is maintained in ``phonebot.entity_specs``.
+    """
+
     id: str
     file: str
     first_name: str | None = None
@@ -54,6 +75,8 @@ class PipelineCaseResult(BaseModel):
 
 
 class ExtractedFields(BaseModel):
+    """Extracted entity fields stored in results.json (without id/file metadata)."""
+
     first_name: str | None = None
     last_name: str | None = None
     email: str | None = None
@@ -73,6 +96,8 @@ class ResultsFile(BaseModel):
 
 
 class PipelineOutput(BaseModel):
+    """Aggregated output produced by ``pipeline.run_batch``, passed to downstream consumers."""
+
     results: list[CallerInfo]
     run_id: str
     config_snapshot: dict[str, Any]
@@ -80,11 +105,15 @@ class PipelineOutput(BaseModel):
 
 
 class EvalResult(BaseModel):
+    """Per-recording evaluation outcome: a boolean match flag for each entity field."""
+
     id: str
     per_field: dict[str, bool]  # field_name → matched
 
 
 class EvalReport(BaseModel):
+    """Aggregated evaluation report written to ``outputs/<run_id>/eval.json``."""
+
     run_id: str
     per_entity_accuracy: dict[str, float]
     overall_accuracy: float

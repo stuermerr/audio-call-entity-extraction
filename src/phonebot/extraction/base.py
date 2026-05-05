@@ -1,3 +1,12 @@
+"""Abstract base class, backend registry, and prompt-rendering utilities for extraction backends.
+
+All extraction backends implement ``ExtractorBase`` and are registered in the
+module-level ``REGISTRY`` dict (populated by ``extraction/__init__.py``).  Prompt
+templates are loaded from YAML files via ``load_prompt`` and rendered with Jinja2
+via ``render_user``; ``StrictUndefined`` is used throughout so missing template
+variables raise immediately rather than silently producing empty strings.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

@@ -2324,6 +2324,11 @@ gpu = [
     { name = "scipy" },
     { name = "whisperx" },
 ]
+gpu-benchmark = [
+    { name = "librosa" },
+    { name = "onnxruntime-gpu" },
+    { name = "scipy" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2355,6 +2360,11 @@ gpu = [
     { name = "onnxruntime-gpu" },
     { name = "scipy" },
     { name = "whisperx" },
+]
+gpu-benchmark = [
+    { name = "librosa" },
+    { name = "onnxruntime-gpu" },
+    { name = "scipy" },
 ]
 
 [[package]]
@@ -3711,7 +3721,7 @@ name = "triton"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "setuptools", marker = "platform_machine != 's390x' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/7b/0a685684ed5322d2af0bddefed7906674f67974aa88b0fae6e82e3b766f6/triton-3.4.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:00be2964616f4c619193cb0d1b29a99bd4b001d7dc333816073f92cf2a8ccdeb", size = 155569223, upload-time = "2025-07-30T19:58:44.017Z" },

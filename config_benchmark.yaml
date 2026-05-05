@@ -1,0 +1,48 @@
+# Best-accuracy benchmark configuration.
+#
+# Transcriber: openai_llm (cloud API — no local GPU transcription model needed).
+# Denoising:   FastEnhancer ONNX GPU (onnxruntime-gpu only — no whisperx/nemo).
+#
+# Docker:  docker build -t phonebot:gpu-benchmark --build-arg INSTALL_GROUP=gpu-benchmark .
+# Local:   uv sync --frozen --no-dev --group gpu-benchmark
+#
+# Achieved 94.2 % overall accuracy on the 30-call dataset.
+
+transcriber: openai_llm  # openai_llm | deepgram | whisperx | parakeet
+extractor: llm  # currently only: llm
+extractor_prompt_file: prompts/extraction/llm_v8_de.yaml  # extraction prompt YAML path
+extraction_only: false  # true skips transcription and reads transcripts from transcriptions_path
+transcriptions_path:  # path to outputs/<run_id>/transcriptions.json when extraction_only is true
+diarization_enabled: false  # native for OpenAI LLM/Deepgram
+gpu_enabled: true  # true enables GPU-backed backends and FastEnhancer denoising
+denoising_enabled: true  # true uses FastEnhancer (ONNX GPU); requires gpu-benchmark or gpu group
+langsmith_tracing: false  # true requires LANGSMITH_API_KEY; traces to LangSmith project
+sample: all  # dev | test | failed | all
+
+# LLM extraction
+llm_extractor_model: gpt-5.5  # OpenAI chat model used by extractor: llm
+
+# OpenAI transcription (used when transcriber: openai_llm)
+openai_llm_transcriber_model: gpt-4o-transcribe  # OpenAI model for openai_llm transcription without diarization
+openai_llm_diarization_model: gpt-4o-transcribe-diarize  # OpenAI model for openai_llm when diarization_enabled is true
+
+# Deepgram (unused in benchmark run but kept for completeness)
+deepgram_model: nova-2  # Deepgram model: nova-3 | nova-2 | enhanced | base
+deepgram_language: de  # BCP-47 language tag, e.g. "de"; "default" = SDK default (en)
+deepgram_smart_format: true  # Deepgram smart formatting
+
+# FastEnhancer denoising
+fastenhancer_model_url: https://github.com/aask1357/fastenhancer/releases/download/onnx-dns-v1.0.0/fastenhancer_l.onnx  # ONNX model URL; change variant suffix (_t/_b/_s/_m/_l).onnx or release tag
+fastenhancer_model_path:  # local ONNX path override; null = download from fastenhancer_model_url
+fastenhancer_hop_size: 100  # must match model variant: 256 for T/B/S, 160 for M, 100 for L
+
+# WhisperX (unused in benchmark run — transcriber is openai_llm)
+whisperx_model: large-v3  # WhisperX model size: tiny | base | small | medium | large-v2 | large-v3
+whisperx_compute_type: float16  # VRAM/accuracy tradeoff: float16 | int8 | float32
+whisperx_language: de  # Language hint, e.g. "de"; "auto" = auto-detect (adds ~1-2s per file)
+whisperx_batch_size: 32  # Whisper ASR inference batch; reduce to 4 if CUDA OOM occurs
+whisperx_vad_batch_size: 32  # VAD segmentation batch; reduce to 2 if CUDA OOM occurs
+
+# Parakeet (unused in benchmark run — transcriber is openai_llm)
+parakeet_model: nvidia/parakeet-tdt-0.6b-v3  # NeMo model ID; first run downloads ~1.2 GB to NeMo cache
+parakeet_language: de-DE  # Parakeet language code, e.g. "de-DE"; "auto" = auto-detect via "multi"

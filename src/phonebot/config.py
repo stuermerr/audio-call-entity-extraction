@@ -1,3 +1,11 @@
+"""Pipeline configuration loaded from config.yaml, environment variables, and .env.
+
+``PipelineConfig`` is a ``pydantic-settings`` model; sources are resolved in priority
+order: explicit init kwargs (CLI overrides) > env/.env > config.yaml > field defaults.
+Cross-field validation (API key requirements, GPU constraints) is enforced in
+``_validate_required_keys``.
+"""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -25,6 +33,13 @@ _HF_DIARIZATION_TRANSCRIBERS = {"whisperx"}
 
 
 class PipelineConfig(BaseSettings):
+    """Unified runtime configuration for the phonebot pipeline.
+
+    Loaded from (in priority order): explicit init kwargs, environment variables /
+    ``.env`` file, ``config.yaml``, and field defaults.  API keys are excluded from
+    serialisation so they are never written to on-disk config snapshots.
+    """
+
     model_config = SettingsConfigDict(
         yaml_file="config.yaml",
         env_file=".env",
@@ -32,35 +47,137 @@ class PipelineConfig(BaseSettings):
     )
 
     # --- pipeline settings ---
-    transcriber: str = "openai_llm"
-    extractor: str = "llm"
-    sample: Literal["dev", "test", "failed", "all"] = "all"
-    extraction_only: bool = False
-    transcriptions_path: str | None = None
-    diarization_enabled: bool = False
-    gpu_enabled: bool = False
-    denoising_enabled: bool = False
-    langsmith_tracing: bool = False
-    extractor_prompt_file: str | None = None
-    openai_llm_transcriber_model: str = "gpt-4o-mini-transcribe"
-    openai_llm_diarization_model: str = "gpt-4o-transcribe-diarize"
-    llm_extractor_model: str = "gpt-4.1-mini"
-    whisperx_model: str = "large-v2"
-    whisperx_compute_type: str = "float16"
-    whisperx_language: str = "auto"
-    whisperx_batch_size: int = 16  # ASR inference batch; reduce to 4-8 if CUDA OOM occurs
-    whisperx_vad_batch_size: int = 8  # VAD segmentation batch; reduce to 2-4 if CUDA OOM occurs
-    deepgram_model: str = "nova-3"
-    deepgram_language: str = "default"
-    deepgram_smart_format: bool = True
-    parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
-    parakeet_language: str = "auto"
-    fastenhancer_model_url: str = (
-        "https://github.com/aask1357/fastenhancer/releases/download/"
-        "onnx-dns-v1.0.0/fastenhancer_b.onnx"
+    transcriber: str = Field(
+        default="openai_llm",
+        description="Transcription backend key. One of: openai_llm, deepgram, whisperx, parakeet.",
     )
-    fastenhancer_model_path: str | None = None  # local path override; skips download when set
-    fastenhancer_hop_size: int = 256  # must match model variant: 256 T/B/S, 160 M, 100 L
+    extractor: str = Field(
+        default="llm",
+        description="Extraction backend key. Currently only 'llm' is supported.",
+    )
+    sample: Literal["dev", "test", "failed", "all"] = Field(
+        default="all",
+        description="Recording subset to process: 'all' runs every WAV in data/recordings/.",
+    )
+    extraction_only: bool = Field(
+        default=False,
+        description="Skip transcription and load transcripts from transcriptions_path instead.",
+    )
+    transcriptions_path: str | None = Field(
+        default=None,
+        description=(
+            "Path to a saved transcriptions.json artifact; required when extraction_only=True."
+        ),
+    )
+    diarization_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable speaker diarization. Requires HF_TOKEN and a diarization-capable transcriber."
+        ),
+    )
+    gpu_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable GPU acceleration. Required for whisperx, parakeet, and FastEnhancer denoising."
+        ),
+    )
+    denoising_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable FastEnhancer ONNX audio denoising. Requires gpu_enabled=True (GPU image only)."
+        ),
+    )
+    langsmith_tracing: bool = Field(
+        default=False,
+        description=(
+            "Enable LangSmith tracing for extraction LLM calls. Requires LANGSMITH_API_KEY."
+        ),
+    )
+    extractor_prompt_file: str | None = Field(
+        default="prompts/extraction/llm_v8_de.yaml",
+        description=(
+            "Path to a YAML/Jinja2 extraction prompt file. Swap without code changes "
+            "for A/B testing."
+        ),
+    )
+    openai_llm_transcriber_model: str = Field(
+        default="gpt-4o-transcribe",
+        description="OpenAI model used by the openai_llm transcription backend.",
+    )
+    openai_llm_diarization_model: str = Field(
+        default="gpt-4o-transcribe-diarize",
+        description=(
+            "OpenAI model for diarized transcription "
+            "(openai_llm backend, diarization_enabled=True)."
+        ),
+    )
+    llm_extractor_model: str = Field(
+        default="gpt-5.4-mini",
+        description="OpenAI chat model used for schema-constrained entity extraction.",
+    )
+    whisperx_model: str = Field(
+        default="large-v3",
+        description="WhisperX model size. GPU-only. large-v3 gives the best accuracy.",
+    )
+    whisperx_compute_type: str = Field(
+        default="float16",
+        description=(
+            "Compute precision for WhisperX inference (float16 requires a CUDA-capable GPU)."
+        ),
+    )
+    whisperx_language: str = Field(
+        default="de",
+        description="BCP-47 language code passed to WhisperX for forced alignment.",
+    )
+    whisperx_batch_size: int = Field(
+        default=32,
+        description="ASR inference batch size for WhisperX. Reduce to 4–8 if CUDA OOM occurs.",
+    )
+    whisperx_vad_batch_size: int = Field(
+        default=8,
+        description="VAD segmentation batch size for WhisperX. Reduce to 2–4 if CUDA OOM occurs.",
+    )
+    deepgram_model: str = Field(
+        default="nova-2",
+        description="Deepgram model name used for transcription.",
+    )
+    deepgram_language: str = Field(
+        default="de",
+        description="BCP-47 language code sent to the Deepgram API.",
+    )
+    deepgram_smart_format: bool = Field(
+        default=True,
+        description="Enable Deepgram smart formatting (punctuation, capitalisation).",
+    )
+    parakeet_model: str = Field(
+        default="nvidia/parakeet-tdt-0.6b-v3",
+        description="HuggingFace model ID for the Parakeet transcription backend. GPU-only.",
+    )
+    parakeet_language: str = Field(
+        default="de-DE",
+        description="BCP-47 language code for Parakeet inference.",
+    )
+    fastenhancer_model_url: str = Field(
+        default=(
+            "https://github.com/aask1357/fastenhancer/releases/download/"
+            "onnx-dns-v1.0.0/fastenhancer_l.onnx"
+        ),
+        description=(
+            "URL to download the FastEnhancer ONNX model. "
+            "Used when fastenhancer_model_path is not set."
+        ),
+    )
+    fastenhancer_model_path: str | None = Field(
+        default=None,
+        description="Local path to a FastEnhancer ONNX model file. Skips download when set.",
+    )
+    fastenhancer_hop_size: int = Field(
+        default=100,
+        description=(
+            "Hop size for FastEnhancer inference. "
+            "Must match model variant: 256 T/B/S, 160 M, 100 L."
+        ),
+    )
 
     # --- API keys ---
     # Excluded from model_dump() / config-snapshot serialisation to avoid

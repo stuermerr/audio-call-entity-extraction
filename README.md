@@ -113,7 +113,14 @@ Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, c
 
 ### Optional GPU denoising
 
-FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker image. The CPU/API path remains dependency-free and the denoising step can be toggled without any code change.
+FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker images. The CPU/API path remains dependency-free and the denoising step can be toggled without any code change.
+
+Two GPU dependency groups are available depending on which transcriber you use:
+
+| Group | Packages | Use with |
+|-------|----------|----------|
+| `gpu-benchmark` | `onnxruntime-gpu`, `librosa`, `scipy` | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build, no torch/CUDA download |
+| `gpu` | above + `whisperx`, `nemo_toolkit[asr]`, torch/CUDA | `whisperx` or `parakeet` transcribers |
 
 ---
 
@@ -140,9 +147,17 @@ cp .env.example .env
 
 ### Local
 
-Requires Python `>=3.11, <3.14` and [uv](https://github.com/astral-sh/uv).
+Requires Python `>=3.13, <3.14` and [uv](https://github.com/astral-sh/uv).
 
-**GPU** (adds whisperx, onnxruntime-gpu, librosa, scipy, torch/CUDA)
+**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising (onnxruntime-gpu only, no whisperx/nemo; fastest install, reproduces best-accuracy result)
+
+```bash
+cp config_benchmark.yaml config.yaml
+uv sync --frozen --no-dev --group gpu-benchmark
+uv run phonebot
+```
+
+**GPU** — full local GPU stack (whisperx, parakeet, FastEnhancer; adds torch/CUDA)
 
 ```bash
 cp config_gpu.yaml config.yaml
@@ -165,7 +180,19 @@ uv run phonebot
 `data/` (recordings + ground truth) is baked into the image — no data mount needed.
 The Docker commands stream progress logs and the final extracted results to the terminal. Full artifacts are still written to `outputs/{run_id}/`.
 
-**GPU** — requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and a CUDA-capable GPU
+**GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising; fastest build, reproduces best-accuracy result — requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU
+
+```bash
+docker build -t phonebot:gpu-benchmark --build-arg INSTALL_GROUP=gpu-benchmark .
+
+docker run --rm --gpus all \
+  --env-file .env \
+  -v "$PWD/config_benchmark.yaml:/app/config.yaml:ro" \
+  -v "$PWD/outputs:/app/outputs" \
+  phonebot:gpu-benchmark
+```
+
+**GPU** — full local GPU stack (whisperx + parakeet + FastEnhancer); requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and CUDA GPU
 
 ```bash
 docker build -t phonebot:gpu --build-arg INSTALL_GROUP=gpu .
@@ -231,6 +258,8 @@ Options:
 ---
 
 ## ⚙️ Configuration
+
+`config_benchmark.yaml` — `openai_llm` transcriber, `gpu_enabled: true`, `denoising_enabled: true`; best-accuracy benchmark settings (94.2 % overall)
 
 `config_gpu.yaml` — `whisperx` transcriber, `gpu_enabled: true`, `denoising_enabled: true`  
 
