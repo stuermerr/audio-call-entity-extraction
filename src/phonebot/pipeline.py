@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 
 from phonebot.config import PipelineConfig
@@ -24,8 +25,11 @@ from phonebot.preprocessing.base import PreprocessorBase
 from phonebot.schemas import (
     AudioInput,
     CallerInfo,
+    ExtractedFields,
     PipelineCaseResult,
     PipelineOutput,
+    RecordingResult,
+    ResultsFile,
     TranscriptionArtifact,
     TranscriptionResult,
 )
@@ -78,7 +82,9 @@ async def run_single(
     # 5b. Preprocessing (passthrough unless denoising is enabled, never raises)
     if config.denoising_enabled:
         logger.info("%s — enhancing audio", prefix)
+    original_audio = audio
     audio = await preprocessor.preprocess(audio)
+    _enhanced_file = audio.file if audio.file != original_audio.file else None
 
     # 5c. Transcription – tenacity reraises after retries, outer except fires once
     logger.info("%s — transcribing", prefix)
@@ -90,6 +96,9 @@ async def run_single(
             caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
             transcript=None,
         )
+    finally:
+        if _enhanced_file is not None and _enhanced_file.exists():
+            _enhanced_file.unlink()
 
     if transcription_results is not None:
         transcription_results.append(result)
@@ -225,19 +234,20 @@ async def run_batch(
     logger.info("Using extraction prompt: %s", prompt_path)
 
     # 6f. Preprocessor
+    _preprocessed_dir: Path | None = None
     if config.denoising_enabled and not config.extraction_only:
         from phonebot.preprocessing.fastenhancer import FastEnhancerPreprocessor
 
-        work_dir = Path(output_dir) / run_id / "preprocessed"
+        _preprocessed_dir = Path(output_dir) / run_id / "preprocessed"
         preprocessor: PreprocessorBase = FastEnhancerPreprocessor(
-            work_dir,
+            _preprocessed_dir,
             model_path=Path(config.fastenhancer_model_path)
             if config.fastenhancer_model_path
             else None,
             model_url=config.fastenhancer_model_url,
             hop_size=config.fastenhancer_hop_size,
         )
-        logger.info("Denoising enabled: writing enhanced audio to %s", work_dir)
+        logger.info("Denoising enabled: writing enhanced audio to %s", _preprocessed_dir)
     else:
         preprocessor = PreprocessorBase()
     # 6g. Persist config snapshot — include resolved prompt path so it is never null
@@ -292,6 +302,11 @@ async def run_batch(
 
     logger.info("Batch complete: %d/%d processed", len(cases), total)
 
+    # Clean up preprocessed dir (individual files already removed after each transcription)
+    if _preprocessed_dir is not None and _preprocessed_dir.exists():
+        shutil.rmtree(_preprocessed_dir, ignore_errors=True)
+        logger.debug("Removed preprocessed directory: %s", _preprocessed_dir)
+
     if not config.extraction_only:
         _save_transcriptions(transcriptions, run_id, Path(output_dir))
 
@@ -303,9 +318,24 @@ async def run_batch(
         cases=cases,
     )
 
-    # 6j. Persist results — exclude in-memory case diagnostics from results.json
+    # 6j. Persist results
     results_path = Path(output_dir) / run_id / "results.json"
-    results_path.write_text(output.model_dump_json(indent=2, exclude={"cases"}), encoding="utf-8")
+    results_file = ResultsFile(
+        recordings=[
+            RecordingResult(
+                id=c.id,
+                file=c.file,
+                extracted=ExtractedFields(
+                    first_name=c.first_name,
+                    last_name=c.last_name,
+                    email=c.email,
+                    phone_number=c.phone_number,
+                ),
+            )
+            for c in output.results
+        ]
+    )
+    results_path.write_text(results_file.model_dump_json(indent=2), encoding="utf-8")
 
     # 6k. Return
     return output

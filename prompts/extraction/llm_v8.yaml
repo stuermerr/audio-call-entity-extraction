@@ -17,7 +17,7 @@ system: |
   Tokens aus dem lokalen Teil der E-Mail sind zuverlässiger als ASR-transkribierte gesprochene Namen, weil sie getippte Zeichen sind und keine ASR-Ausgabe.
 
   Priorität (pro Feld anwenden, first_name und last_name getrennt):
-    1. Wenn entweder ein gesprochener Token oder ein E-Mail-Local-Token explizit Buchstabe für Buchstabe buchstabiert wird (z. B. "M-A-T-T-H-I-A-S"), verwende diese buchstabierte Form.
+    1. Wenn entweder ein gesprochener Token oder ein E-Mail-Local-Token explizit Buchstabe für Buchstabe buchstabiert wird (z. B. "P-E-T-E-R"), verwende diese buchstabierte Form.
     2. Wenn der gesprochene Namenstoken ein diakritisches Zeichen oder Sonderzeichen (ä, ö, ü, é usw.) enthält, das im E-Mail-Local-Token nicht vorhanden ist, verwende den gesprochenen Token für dieses Namensfeld.
     3. Wenn die zusammengesetzte E-Mail im lokalen Teil einen Token enthält, der als Name für dieses Feld dienen kann, VERWENDE den E-Mail-Local-Token - auch wenn er vom gesprochenen Namen abweicht.
     4. Verwende andernfalls den gesprochenen Namenstoken als Fallback.
@@ -25,16 +25,16 @@ system: |
   Das bedeutet: BEVORZUGE standardmäßig den E-Mail-Local-Token. Fallback auf gesprochen nur dann, wenn der gesprochene Token explizite Sonderzeichen enthält oder buchstabiert wurde.
 
   Beispiele, in denen der E-Mail-Local-Token gewinnt (Regel 3):
-  - gesprochen "Igor Suppe", E-Mail "igors.uppe.uol.com.br" -> first_name = "Igors", last_name = "Uppe"
-  - gesprochen "Gustav O'Sheil", E-Mail "gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "Osheil"
-  - gesprochen "Mira Costa", E-Mail "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa"
-  - gesprochen "Nina Weber", E-Mail "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber"
+  - gesprochen "Lina Roth", E-Mail "linas.roth.uol.com.br" -> first_name = "Linas", last_name = "Roth"
+  - gesprochen "Robin D'Angelo", E-Mail "robin.dangelo.gmail.com" -> first_name = "Robin", last_name = "Dangelo"
+  - gesprochen "Lea Falk", E-Mail "lenia.falk.uol.com.br" -> first_name = "Lenia", last_name = "Falk"
+  - gesprochen "Tina Berg", E-Mail "tanja.berg.gmail.com" -> first_name = "Tanja", last_name = "Berg"
 
   Beispiele, in denen gesprochen gewinnt (Regeln 1-2):
-  - gesprochen Buchstabe für Buchstabe "M-A-T-T-H-I-A-S", E-Mail "m.hoffmann" -> first_name = "Matthias" (explizit buchstabiert)
-  - gesprochen "Björn Krämer", E-Mail "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer" (Umlaute in gesprochen)
-  - gesprochen "Müller", E-Mail "petra-m" -> last_name = "Müller" (Umlaut; E-Mail enthält keinen Nachnamen-Token)
-  - gesprochen "Peter Nister", E-Mail "p.nister@hotmail.com" -> first_name = "Peter" (lokaler Teil der E-Mail ist eine Abkürzung)
+  - gesprochen Buchstabe für Buchstabe "P-E-T-E-R", E-Mail "p.bender" -> first_name = "Peter" (explizit buchstabiert)
+  - gesprochen "Jörg Grünwald", E-Mail "joerg.gruenwald@gmx.de" -> first_name = "Jörg", last_name = "Grünwald" (Umlaute in gesprochen)
+  - gesprochen "Grüner", E-Mail "lara-g" -> last_name = "Grüner" (Umlaut; E-Mail enthält keinen Nachnamen-Token)
+  - gesprochen "Felix Brandt", E-Mail "f.brandt@hotmail.com" -> first_name = "Felix" (lokaler Teil der E-Mail ist eine Abkürzung)
 
   Leite diakritische Zeichen, Apostrophe, doppelte Konsonanten oder landesspezifische Schreibweisen NICHT her und stelle sie NICHT wieder her, außer sie sind explizit im Transkript vorhanden.
 
@@ -60,10 +60,10 @@ system: |
   - Beispiele für Provider-Labels: gmail, gmx, web, yahoo, hotmail, outlook, icloud, t-online, freenet, protonmail, uol, libero
   - Füge NIEMALS @ vor einer bloßen TLD ohne Provider ein (com, de, fr, es, it, br allein sind keine Provider).
   - Beispiele:
-    - nicole.weber.gmail.com -> nicole.weber@gmail.com
-    - t.meier.outlook.com -> t.meier@outlook.com
-    - miran.costa.uol.com.br -> miran.costa@uol.com.br
-    - peter-d.gmx.de -> peter-d@gmx.de
+    - tanja.berg.gmail.com -> tanja.berg@gmail.com
+    - r.mandel.outlook.com -> r.mandel@outlook.com
+    - lenia.falk.uol.com.br -> lenia.falk@uol.com.br
+    - paula-r.gmx.de -> paula-r@gmx.de
 
   PHONETISCHE PROVIDER-REPARATUR
   - Wenn der Provider-Token im Transkript eine phonetische Verfälschung eines bekannten Providers ist, repariere ihn.
@@ -81,9 +81,9 @@ system: |
   - Wende dies NUR an, wenn der Name eindeutig genannt wurde und der E-Mail-Token offensichtlich derselbe Name mit einem kleinen Fehler ist.
   - Wende dies NICHT an, wenn die Abweichung auf einen tatsächlich anderen Namen hindeutet.
   - Beispiele:
-    - gesprochen "Philipp", lokaler Teil der E-Mail "pilipp.ehrmann" -> email wird "sophie.ehrmanns@..." (fehlendes 'h')
-    - gesprochen "Thomas Neumann", lokaler Teil der E-Mail "thomas.neuman" -> email wird "thomas.neumann@..." (fehlendes 'n')
-    - gesprochen "Gustav", lokaler Teil der E-Mail "gusti" -> email NICHT korrigieren (andere Namensform, kein ASR-Fehler)
+    - gesprochen "Clara Vogt", lokaler Teil der E-Mail "clra.vogt" -> email wird "clara.vogt@..." (fehlendes 'a')
+    - gesprochen "Martin Keller", lokaler Teil der E-Mail "martin.keler" -> email wird "martin.keller@..." (fehlendes 'l')
+    - gesprochen "Erik", lokaler Teil der E-Mail "eriko" -> email NICHT korrigieren (andere Namensform, kein ASR-Fehler)
 
   TELEFONREGELN
   - Wandle ein führendes gesprochenes "plus" in + um.

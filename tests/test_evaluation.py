@@ -5,29 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from phonebot.evaluation import Evaluator, match_field, normalize_phone
+from phonebot.evaluation import Evaluator, match_field
 from phonebot.schemas import CallerInfo, PipelineCaseResult
-
-# ---------------------------------------------------------------------------
-# normalize_phone
-# ---------------------------------------------------------------------------
-
-
-def test_normalize_phone_e164_strips_spaces() -> None:
-    assert normalize_phone("+49 152 11223456") == "+4915211223456"
-
-
-def test_normalize_phone_0049_prefix() -> None:
-    assert normalize_phone("0049152 11223456") == "+4915211223456"
-
-
-def test_normalize_phone_0_national_trunk() -> None:
-    assert normalize_phone("0152 11223456") == "+4915211223456"
-
-
-def test_normalize_phone_no_spaces_passthrough() -> None:
-    assert normalize_phone("+4915211223456") == "+4915211223456"
-
 
 # ---------------------------------------------------------------------------
 # match_field

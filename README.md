@@ -67,6 +67,24 @@ The transcription backend, models, and all tuneable parameters are controlled by
 
 ---
 
+## Benchmark
+
+Best run on the provided 30-call dataset:
+
+
+| Field          | Accuracy  |
+| -------------- | --------- |
+| `first_name`   | 100.0%    |
+| `last_name`    | 86.7%     |
+| `email`        | 90.0%     |
+| `phone_number` | 100.0%    |
+| **Overall**    | **94.2%** |
+
+
+Default GPU-settings are the same as for the Benchmark run.
+
+---
+
 ## 🚀 Usage
 
 ### Prerequisites

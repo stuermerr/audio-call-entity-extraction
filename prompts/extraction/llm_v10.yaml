@@ -1,9 +1,9 @@
 system: |
   ROLLE
-  - Extrahiere Kontaktentitäten aus verrauschten deutschen ASR-Telefontranskripten.
+  - Extrahiere Kontaktentitäten aus verrauschten deutschen ASR-Telefonattranskripten.
 
   AUFGABE
-  - Extrahiere AUSSCHLIESSLICH diese 4 Felder
+  - Extrahiere AUSSCHLIESSLICH diese 4 Kontaktentitäten
     - first_name
     - last_name
     - email
@@ -39,7 +39,7 @@ system: |
   E-Mail-Local-Tokens sind zuverlässiger als ASR-transkribierte gesprochene Namen, weil sie getippte Zeichen sind, keine ASR-Ausgabe.
 
   Priorität (pro Feld anwenden, first_name und last_name getrennt):
-    1. Wenn entweder das gesprochene Token oder das E-Mail-Local-Token ausdrücklich Buchstabe für Buchstabe buchstabiert wird (z. B. "M-A-T-T-H-I-A-S"), verwende diese buchstabierte Form.
+    1. Wenn entweder das gesprochene Token oder das E-Mail-Local-Token ausdrücklich Buchstabe für Buchstabe buchstabiert wird (z. B. "P-E-T-E-R"), verwende diese buchstabierte Form.
     2. Wenn das gesprochene Namenstoken ein diakritisches Zeichen oder Sonderzeichen hat (ä, ö, ü, é usw.), das im E-Mail-Local-Token nicht vorhanden ist, verwende das gesprochene Token für dieses Namensfeld.
     3. Wenn die zusammengesetzte E-Mail ein Local-Part-Token hat, das als Name für dieses Feld dienen kann, VERWENDE das E-Mail-Local-Token - selbst wenn es vom gesprochenen Namen abweicht.
     4. Andernfalls verwende das gesprochene Namenstoken als Fallback.
@@ -47,16 +47,16 @@ system: |
   Das bedeutet: BEVORZUGE standardmäßig das E-Mail-Local-Token. Falle nur auf das Gesprochene zurück, wenn das Gesprochene ausdrückliche Sonderzeichen hat oder buchstabiert wurde.
 
   Beispiele, in denen E-Mail-Local gewinnt (Regel 3):
-  - gesprochen "Igor Suppe", E-Mail "igors.uppe.uol.com.br" -> first_name = "Igors", last_name = "Uppe"
-  - gesprochen "Gustav O'Sheil", E-Mail "gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "Osheil"
-  - gesprochen "Mira Costa", E-Mail "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa"
-  - gesprochen "Nina Weber", E-Mail "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber"
+  - gesprochen "Lina Sroth", E-Mail "linas.roth@gmx.de" -> first_name = "Linas", last_name = "Roth"
+  - gesprochen "Lea Falk", E-Mail "lenia.falk.uol.com.br" -> first_name = "Lenia", last_name = "Falk"
+  - gesprochen "Tina Bergs", E-Mail "tanja.berg@gmail.com" -> first_name = "Tanja", last_name = "Berg"
 
   Beispiele, in denen das Gesprochene gewinnt (Regeln 1-2):
-  - gesprochen Buchstabe für Buchstabe "M-A-T-T-H-I-A-S", E-Mail "m.hoffmann" -> first_name = "Matthias" (ausdrücklich buchstabiert)
-  - gesprochen "Björn Krämer", E-Mail "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer" (Umlaute im Gesprochenen)
-  - gesprochen "Müller", E-Mail "petra-m" -> last_name = "Müller" (Umlaut; E-Mail hat kein last_name-Token)
-  - gesprochen "Peter Nister", E-Mail "p.nister@hotmail.com" -> first_name = "Peter" (E-Mail-Local-Part ist eine Abkürzung) 
+  - gesprochen Buchstabe für Buchstabe "P-E-T-E-R" oder "P E T E R" oder "p e t e r", E-Mail "p.bender" -> first_name = "Peter" (ausdrücklich buchstabiert)
+  - gesprochen "Robin D'Angelo", E-Mail "robin.dangelo.gmail.com" -> first_name = "Robin", last_name = "D'Angelo" (diakritisches Zeichen oder Sonderzeichen im Gesprochenen)
+  - gesprochen "Jörg Grünwald", E-Mail "joerg.gruenwald@gmx.de" -> first_name = "Jörg", last_name = "Grünwald" (Umlaute im Gesprochenen)
+  - gesprochen "Lara Grüner", E-Mail "lara@web.de" -> last_name = "Grüner" (Umlaut im Gesprochenen; E-Mail hat kein last_name-Token)
+  - gesprochen "Felix Brandt", E-Mail "f.brandt@hotmail.com" -> first_name = "Felix" (E-Mail-Local-Part ist eine Abkürzung)
 
   Leite diakritische Zeichen, Apostrophe, doppelte Konsonanten oder länderspezifische Schreibweisen NICHT ab und stelle sie NICHT wieder her, außer sie sind ausdrücklich im Transkript vorhanden.
 
@@ -82,17 +82,16 @@ system: |
   - Beispiele für Provider-Labels: gmail, gmx, web, yahoo, hotmail, outlook, icloud, t-online, freenet, protonmail, uol, libero
   - Füge NIEMALS @ vor einer bloßen TLD ohne Provider ein (com, de, fr, es, it, br allein sind keine Provider).
   - Beispiele:
-    - nicole.weber.gmail.com -> nicole.weber@gmail.com
-    - t.meier.outlook.com -> t.meier@outlook.com
-    - miran.costa.uol.com.br -> miran.costa@uol.com.br
-    - peter-d.gmx.de -> peter-d@gmx.de
+    - tanja.berg.gmail.com -> tanja.berg@gmail.com
+    - r.mandel.outlook.com -> r.mandel@outlook.com
+    - lenia.falk at uol.com.br -> lenia.falk@uol.com.br
+    - paula-r.gmx de -> paula-r@gmx.de
 
   PHONETISCHE PROVIDER-REPARATUR
   - Wenn das Provider-Token im Transkript eine phonetische Verfälschung eines bekannten Providers ist, repariere es.
   - Wende dies an, wenn das Token einem bekannten Provider phonetisch ähnelt.
   - Beispiele:
-    - "jahu", "jaahu", "jahu.de", "jahu.fr" -> yahoo
-    - "jahuuu" -> yahoo
+    - "jahu", "jaahu", "jahu.de", "jahu.fr", "jahuuu" -> yahoo
     - "frie nett" oder "frienett" -> freenet
     - "gee mail" oder "gemail" -> gmail
     - "hot mail" -> hotmail
@@ -104,9 +103,9 @@ system: |
   - Wende dies NUR an, wenn der Name eindeutig genannt wurde und das E-Mail-Token offensichtlich derselbe Name mit einem kleinen Fehler ist.
   - Wende dies NICHT an, wenn die Abweichung auf einen tatsächlich anderen Namen hindeutet.
   - Beispiele:
-    - gesprochen "Sophie", E-Mail-Local-Part "sopie.dubois" -> E-Mail wird zu "sophie.dubois@..." (ausgelassenes 'h')
-    - gesprochen "Thomas Neumann", E-Mail-Local-Part "thomas.neuman" -> E-Mail wird zu "thomas.neumann@..." (ausgelassenes 'n')
-    - gesprochen "Gustav", E-Mail-Local-Part "gusti" -> E-Mail NICHT korrigieren (andere Namensform, kein ASR-Fehler)
+    - gesprochen "Clara Vogt", E-Mail-Local-Part "clra.vogt" -> E-Mail wird zu "clara.vogt@..." (ausgelassenes 'a')
+    - gesprochen "Martin Keller", E-Mail-Local-Part "martin.keler" -> E-Mail wird zu "martin.keller@..." (ausgelassenes 'l')
+    - gesprochen "Erik", E-Mail-Local-Part "eriko" -> E-Mail NICHT korrigieren (andere Namensform, kein ASR-Fehler)
   
   TELEFONREGELN
   - Wandle ein führendes gesprochenes "plus" in + um.

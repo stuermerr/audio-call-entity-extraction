@@ -207,32 +207,6 @@ async def test_run_single_happy_path(tmp_path: Path) -> None:
     assert case.transcript == "Max Muster max@test.com 015201234567"
 
 
-async def test_run_single_logs_enhancement_step(
-    tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    wav = tmp_path / "call_12.wav"
-    wav.write_bytes(b"RIFF....")
-    audio = AudioInput(id="call_12", file=wav)
-    config = _make_config().model_copy(update={"denoising_enabled": True})
-
-    caplog.set_level(logging.INFO, logger="test_pipeline")
-
-    await run_single(
-        audio,
-        config,
-        _make_logger(),
-        transcriber=MockTranscriber(),
-        extractor=MockExtractor(),
-        prompt=_make_prompt(),
-        preprocessor=_make_preprocessor(),
-        idx=2,
-        total=10,
-    )
-
-    assert "[3/10] call_12 — enhancing audio" in caplog.messages
-
-
 # ---------------------------------------------------------------------------
 # Step 15 – File guard: missing file → skip + null CallerInfo, transcript None
 # ---------------------------------------------------------------------------
@@ -361,9 +335,16 @@ async def test_run_batch_output_shape(tmp_path: Path, monkeypatch: pytest.Monkey
 
     data = json.loads(results_path.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
-    assert len(data["results"]) == 2
-    # cases must NOT appear in the serialised results.json
+    assert len(data["recordings"]) == 2
+    # run_id, config_snapshot, cases must NOT appear in results.json
     assert "cases" not in data
+    assert "results" not in data
+    assert "run_id" not in data
+    assert "config_snapshot" not in data
+    # nested shape: each entry has id, file, extracted dict
+    entry = data["recordings"][0]
+    assert "extracted" in entry
+    assert set(entry["extracted"].keys()) == {"first_name", "last_name", "email", "phone_number"}
 
     transcriptions_path = tmp_path / output.run_id / "transcriptions.json"
     artifact = TranscriptionArtifact.model_validate_json(

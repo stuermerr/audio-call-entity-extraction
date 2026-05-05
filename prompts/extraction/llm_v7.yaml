@@ -17,7 +17,7 @@ system: |
   Email-local tokens are more reliable than ASR-transcribed spoken names because they are typed characters, not ASR output.
 
   Priority (apply per field, first_name and last_name separately):
-    1. If either spoken or email-local token is explicitly spelled letter-by-letter (e.g. "M-A-T-T-H-I-A-S"), use that spelled form.
+    1. If either spoken or email-local token is explicitly spelled letter-by-letter (e.g. "P-E-T-E-R"), use that spelled form.
     2. If the spoken name token has a diacritic or special character (ä, ö, ü, é, etc.) not present in the email-local token, use the spoken token for that name field.
     3. If the assembled email has a local-part token that can serve as the name for that field, USE the email-local token — even if it differs from the spoken name.
     4. Else use the spoken name token as fallback.
@@ -25,16 +25,16 @@ system: |
   This means: PREFER the email-local token by default. Only fall back to spoken when spoken has explicit special characters or was spelled out.
 
   Examples where email-local wins (rule 3):
-  - spoken "Igor Suppe", email "igors.uppe.uol.com.br" -> first_name = "Igors", last_name = "Uppe"
-  - spoken "Gustav O'Sheil", email "gustav.osheil.gmail.com" -> first_name = "Gustav", last_name = "Osheil"
-  - spoken "Mira Costa", email "miran.costa.uol.com.br" -> first_name = "Miran", last_name = "Costa"
-  - spoken "Nina Weber", email "nicole.weber.gmail.com" -> first_name = "Nicole", last_name = "Weber"
+  - spoken "Lina Roth", email "linas.roth.uol.com.br" -> first_name = "Linas", last_name = "Roth"
+  - spoken "Robin D'Angelo", email "robin.dangelo.gmail.com" -> first_name = "Robin", last_name = "Dangelo"
+  - spoken "Lea Falk", email "lenia.falk.uol.com.br" -> first_name = "Lenia", last_name = "Falk"
+  - spoken "Tina Berg", email "tanja.berg.gmail.com" -> first_name = "Tanja", last_name = "Berg"
 
   Examples where spoken wins (rules 1–2):
-  - spoken letter-by-letter "M-A-T-T-H-I-A-S", email "m.hoffmann" -> first_name = "Matthias" (explicitly spelled)
-  - spoken "Björn Krämer", email "bjoern.kraemer@gmx.de" -> first_name = "Björn", last_name = "Krämer" (umlauts in spoken)
-  - spoken "Müller", email "petra-m" -> last_name = "Müller" (umlaut; email has no last name token)
-  - spoken "Peter Nister", email "p.nister@hotmail.com" -> first_name = "Peter" (email local-part is abbreviation) 
+  - spoken letter-by-letter "P-E-T-E-R", email "p.bender" -> first_name = "Peter" (explicitly spelled)
+  - spoken "Jörg Grünwald", email "joerg.gruenwald@gmx.de" -> first_name = "Jörg", last_name = "Grünwald" (umlauts in spoken)
+  - spoken "Grüner", email "lara-g" -> last_name = "Grüner" (umlaut; email has no last name token)
+  - spoken "Felix Brandt", email "f.brandt@hotmail.com" -> first_name = "Felix" (email local-part is abbreviation)
 
   Do NOT infer or restore diacritics, apostrophes, doubled consonants, or country-specific spellings unless explicitly present in the transcript.
 
@@ -60,10 +60,10 @@ system: |
   - Provider label examples: gmail, gmx, web, yahoo, hotmail, outlook, icloud, t-online, freenet, protonmail, uol, libero
   - NEVER insert @ before a bare TLD with no provider (com, de, fr, es, it, br alone are not providers).
   - Examples:
-    - nicole.weber.gmail.com -> nicole.weber@gmail.com
-    - t.meier.outlook.com -> t.meier@outlook.com
-    - miran.costa.uol.com.br -> miran.costa@uol.com.br
-    - peter-d.gmx.de -> peter-d@gmx.de
+    - tanja.berg.gmail.com -> tanja.berg@gmail.com
+    - r.mandel.outlook.com -> r.mandel@outlook.com
+    - lenia.falk.uol.com.br -> lenia.falk@uol.com.br
+    - paula-r.gmx.de -> paula-r@gmx.de
 
   PHONETIC PROVIDER REPAIR
   - If the provider token in the transcript is a phonetic corruption of a known provider, repair it.
@@ -82,9 +82,9 @@ system: |
   - Apply ONLY when the name was clearly stated and the email token is evidently the same name with a minor error.
   - Do NOT apply when the discrepancy suggests a genuinely different name.
   - Examples:
-    - spoken "Sophie", email local-part "sopie.dubois" -> email becomes "sophie.dubois@..." (dropped 'h')
-    - spoken "Thomas Neumann", email local-part "thomas.neuman" -> email becomes "thomas.neumann@..." (dropped 'n')
-    - spoken "Gustav", email local-part "gusti" -> do NOT correct email (different name form, not an ASR error)
+    - spoken "Clara Vogt", email local-part "clra.vogt" -> email becomes "clara.vogt@..." (dropped 'a')
+    - spoken "Martin Keller", email local-part "martin.keler" -> email becomes "martin.keller@..." (dropped 'l')
+    - spoken "Erik", email local-part "eriko" -> do NOT correct email (different name form, not an ASR error)
   
   PHONE RULES
   - Convert leading spoken "plus" to +.

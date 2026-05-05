@@ -66,18 +66,19 @@ def test_pipeline_output_roundtrip() -> None:
 
 
 def test_eval_report_shape() -> None:
-    """run_id str, per_entity_accuracy dict, overall_accuracy float, results list present."""
+    """EvalReport stores run_id, per-entity accuracies, overall accuracy, and results correctly."""
     report = EvalReport(
         run_id="20240101_120000_openai_llm_llm_dev",
         per_entity_accuracy={"first_name": 0.9, "last_name": 0.85},
         overall_accuracy=0.875,
         results=[EvalResult(id="call_01", per_field={"first_name": True, "last_name": False})],
     )
-    assert isinstance(report.run_id, str)
-    assert isinstance(report.per_entity_accuracy, dict)
-    assert isinstance(report.overall_accuracy, float)
-    assert isinstance(report.results, list)
+    assert report.run_id == "20240101_120000_openai_llm_llm_dev"
+    assert report.per_entity_accuracy == {"first_name": 0.9, "last_name": 0.85}
+    assert report.overall_accuracy == 0.875
+    assert len(report.results) == 1
     assert report.results[0].id == "call_01"
+    assert report.results[0].per_field == {"first_name": True, "last_name": False}
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +142,7 @@ def test_case_report_entry_expected_none() -> None:
 
 
 def test_case_report_shape() -> None:
-    """CaseReport holds run_id and a list of CaseReportEntry objects."""
+    """CaseReport stores run_id and entries; each entry is accessible and correct."""
     ci = CallerInfo(id="call_01", file="call_01.wav")
     entry = CaseReportEntry(
         id="call_01",
@@ -155,3 +156,10 @@ def test_case_report_shape() -> None:
     assert report.run_id == "run_abc"
     assert len(report.cases) == 1
     assert report.cases[0].id == "call_01"
+    assert report.cases[0].expected is None
+    assert report.cases[0].per_field == {
+        "first_name": False,
+        "last_name": False,
+        "email": False,
+        "phone_number": False,
+    }

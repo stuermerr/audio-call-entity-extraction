@@ -55,15 +55,10 @@ def test_normalize_phone_uses_phonenumbers_for_german_national_trunk() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_validate_and_normalize_phone_e164() -> None:
+def test_validate_and_normalize_phone_normalizes_to_e164() -> None:
+    """Covers +49, 0049, and national-trunk (0xxx) formats — all produce E.164."""
     assert validate_and_normalize_phone("+49 152 11223456") == "+4915211223456"
-
-
-def test_validate_and_normalize_phone_0049() -> None:
     assert validate_and_normalize_phone("0049152 11223456") == "+4915211223456"
-
-
-def test_validate_and_normalize_phone_german_national_trunk() -> None:
     assert validate_and_normalize_phone("0152 11223456") == "+4915211223456"
 
 

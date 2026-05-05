@@ -53,11 +53,29 @@ class PipelineCaseResult(BaseModel):
     transcript: str | None
 
 
+class ExtractedFields(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone_number: str | None = None
+
+
+class RecordingResult(BaseModel):
+    id: str
+    file: str
+    extracted: ExtractedFields
+
+
+class ResultsFile(BaseModel):
+    """On-disk format of output/<run_id>/results.json — mirrors ground_truth.json structure."""
+
+    recordings: list[RecordingResult]
+
+
 class PipelineOutput(BaseModel):
     results: list[CallerInfo]
     run_id: str
     config_snapshot: dict[str, Any]
-    # Not serialised to results.json — excluded at call site via model_dump_json(exclude={'cases'}).
     cases: list[PipelineCaseResult] = []
 
 
