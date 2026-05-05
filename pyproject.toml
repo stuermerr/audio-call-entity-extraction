@@ -30,6 +30,7 @@ gpu = [
     "onnxruntime-gpu",
     "librosa",
     "scipy",
+    "nemo_toolkit[asr]",
 ]
 
 [tool.uv.sources]
