@@ -34,7 +34,7 @@ class PipelineConfig(BaseSettings):
     # --- pipeline settings ---
     transcriber: str = "openai_llm"
     extractor: str = "llm"
-    sample: Literal["dev", "test", "failed", "all"] = "dev"
+    sample: Literal["dev", "test", "failed", "all"] = "all"
     extraction_only: bool = False
     transcriptions_path: str | None = None
     diarization_enabled: bool = False

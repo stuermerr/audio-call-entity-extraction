@@ -1,5 +1,4 @@
 transcriber: whisperx  # openai_llm | whisperx | deepgram | parakeet
-sample: all  # dev | test | failed | all
 extraction_only: false  # true skips transcription and reads transcripts from transcriptions_path
 transcriptions_path:   # path to outputs/<run_id>/transcriptions.json when extraction_only is true
 diarization_enabled: false  # native for OpenAI LLM/Deepgram; integrated WhisperX path requires HF_TOKEN

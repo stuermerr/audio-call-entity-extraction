@@ -12,7 +12,7 @@
 
 ARG INSTALL_GROUP=cpu
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # ---------------------------------------------------------------------------
 # uv — install from the official distroless image (no curl/pip required)
@@ -70,4 +70,4 @@ RUN mkdir -p /app/outputs
 #   secrets      →  --env-file .env
 # ---------------------------------------------------------------------------
 ENTRYPOINT ["uv", "run", "phonebot"]
-CMD ["run", "--help"]
+CMD ["--help"]
