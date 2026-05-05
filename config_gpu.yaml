@@ -3,9 +3,9 @@ extraction_only: false  # true skips transcription and reads transcripts from tr
 transcriptions_path:   # path to outputs/<run_id>/transcriptions.json when extraction_only is true
 diarization_enabled: false  # native for OpenAI LLM/Deepgram; integrated WhisperX path requires HF_TOKEN
 gpu_enabled: true  # true enables GPU-backed backends (whisperx, parakeet)
-denoising_enabled: true  # true uses FastEnhancer (ONNX GPU); install with `uv sync --python 3.11 --group gpu`
+denoising_enabled: true  # true uses FastEnhancer (ONNX GPU); install with `uv sync --group gpu`
 langsmith_tracing: false  # true requires LANGSMITH_API_KEY; traces to LangSmith project
-extractor_prompt_file: prompts/extraction/llm_v8.yaml  # extraction prompt YAML path
+extractor_prompt_file: prompts/extraction/llm_v10.yaml  # extraction prompt YAML path
 openai_llm_transcriber_model: gpt-4o-transcribe  # OpenAI model for openai_llm transcription without diarization
 openai_llm_diarization_model: gpt-4o-transcribe-diarize  # OpenAI model for openai_llm when diarization_enabled is true
 llm_extractor_model: gpt-5.4-mini  # OpenAI chat model used by extractor: llm
@@ -18,5 +18,5 @@ deepgram_model: nova-2  # Deepgram model: nova-3 | nova-2 | enhanced | base
 deepgram_language: de  # BCP-47 language tag, e.g. "de"; "default" = SDK default (en)
 parakeet_model: nvidia/parakeet-tdt-0.6b-v3  # NeMo model ID; first run downloads ~1.2 GB to NeMo cache
 parakeet_language: de-DE  # Parakeet language code, e.g. "de-DE"; "auto" = auto-detect via "multi"
-fastenhancer_model_url: https://github.com/aask1357/fastenhancer/releases/download/onnx-dns-v1.0.0/fastenhancer_m.onnx  # ONNX model URL; change variant suffix (_t/_b/_s/_m/_l).onnx or release tag
-fastenhancer_hop_size: 160  # must match model variant: 256 for T/B/S, 160 for M, 100 for L
+fastenhancer_model_url: https://github.com/aask1357/fastenhancer/releases/download/onnx-dns-v1.0.0/fastenhancer_l.onnx  # ONNX model URL; change variant suffix (_t/_b/_s/_m/_l).onnx or release tag
+fastenhancer_hop_size: 100  # must match model variant: 256 for T/B/S, 160 for M, 100 for L
