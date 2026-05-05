@@ -13,15 +13,15 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Key-to-backend matrix (update when adding new backends)
 # ---------------------------------------------------------------------------
-# OPENAI_API_KEY  : transcriber="openai_llm"  OR  extractor in ("llm", "privacy_filter")
+# OPENAI_API_KEY  : transcriber="openai_llm" OR extractor="llm"
 # DEEPGRAM_API_KEY: transcriber="deepgram"
-# HF_TOKEN        : diarization_enabled=True with WhisperX or pyannote fallback
+# HF_TOKEN        : diarization_enabled=True with transcriber="whisperx"
 # LANGSMITH_API_KEY: langsmith_tracing=True
 # ---------------------------------------------------------------------------
 
 _OPENAI_TRANSCRIBERS = {"openai_llm"}
-_OPENAI_EXTRACTORS = {"llm", "privacy_filter"}
-_HF_DIARIZATION_TRANSCRIBERS = {"whisperx", "parakeet"}
+_OPENAI_EXTRACTORS = {"llm"}
+_HF_DIARIZATION_TRANSCRIBERS = {"whisperx"}
 
 
 class PipelineConfig(BaseSettings):
@@ -49,9 +49,7 @@ class PipelineConfig(BaseSettings):
     whisperx_compute_type: str = "float16"
     whisperx_language: str = "auto"
     whisperx_batch_size: int = 16  # ASR inference batch; reduce to 4-8 if CUDA OOM occurs
-    whisperx_vad_batch_size: int = (
-        8  # pyannote VAD segmentation batch; reduce to 2-4 if CUDA OOM occurs
-    )
+    whisperx_vad_batch_size: int = 8  # VAD segmentation batch; reduce to 2-4 if CUDA OOM occurs
     deepgram_model: str = "nova-3"
     deepgram_language: str = "default"
     deepgram_smart_format: bool = True

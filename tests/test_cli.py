@@ -32,7 +32,7 @@ def _write_cli_config(tmp_path: Path) -> None:
         yaml.safe_dump(
             {
                 "transcriber": "whisperx",
-                "extractor": "presidio",
+                "extractor": "custom_extractor",
                 "sample": "test",
             }
         ),
@@ -85,7 +85,7 @@ def test_omitted_config_flags_respect_config_yaml(tmp_path: Path, monkeypatch) -
     assert "Processing 0 recordings [test]" in result.output
     assert captured[0].sample == "test"
     assert captured[0].transcriber == "whisperx"
-    assert captured[0].extractor == "presidio"
+    assert captured[0].extractor == "custom_extractor"
 
 
 def test_explicit_config_flags_override_config_yaml(tmp_path: Path, monkeypatch) -> None:
@@ -115,7 +115,7 @@ def test_explicit_config_flags_override_config_yaml(tmp_path: Path, monkeypatch)
             "--transcriber",
             "deepgram",
             "--extractor",
-            "privacy_filter",
+            "llm",
             "--eval",
             "false",
         ],
@@ -125,7 +125,7 @@ def test_explicit_config_flags_override_config_yaml(tmp_path: Path, monkeypatch)
     assert "Processing 0 recordings [all]" in result.output
     assert captured[0].sample == "all"
     assert captured[0].transcriber == "deepgram"
-    assert captured[0].extractor == "privacy_filter"
+    assert captured[0].extractor == "llm"
 
 
 def test_failed_sample_flag_is_accepted(monkeypatch) -> None:
@@ -193,7 +193,7 @@ def test_extraction_only_can_be_enabled_from_config_yaml(
         yaml.safe_dump(
             {
                 "transcriber": "deepgram",
-                "extractor": "presidio",
+                "extractor": "custom_extractor",
                 "sample": "failed",
                 "extraction_only": True,
                 "transcriptions_path": str(transcriptions_path),
@@ -223,7 +223,7 @@ def test_extraction_only_can_be_enabled_from_config_yaml(
     assert captured[0].extraction_only is True
     assert captured[0].transcriptions_path == str(transcriptions_path)
     assert captured[0].transcriber == "deepgram"
-    assert captured[0].extractor == "presidio"
+    assert captured[0].extractor == "custom_extractor"
 
 
 def test_extraction_only_requires_transcriptions_path(

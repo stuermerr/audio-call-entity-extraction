@@ -57,7 +57,7 @@ NON_SECRET_CONFIG_FIELDS = [
 
 YAML_VALUES: dict[str, Any] = {
     "transcriber": "whisperx",
-    "extractor": "presidio",
+    "extractor": "custom_yaml",
     "sample": "test",
     "diarization_enabled": True,
     "gpu_enabled": True,
@@ -78,7 +78,7 @@ YAML_VALUES: dict[str, Any] = {
 
 DOTENV_VALUES: dict[str, Any] = {
     "transcriber": "parakeet",
-    "extractor": "gliner",
+    "extractor": "custom_dotenv",
     "sample": "all",
     "diarization_enabled": False,
     "gpu_enabled": False,
@@ -99,7 +99,7 @@ DOTENV_VALUES: dict[str, Any] = {
 
 INIT_VALUES: dict[str, Any] = {
     "transcriber": "deepgram",
-    "extractor": "privacy_filter",
+    "extractor": "custom_init",
     "sample": "dev",
     "diarization_enabled": True,
     "gpu_enabled": True,
@@ -187,7 +187,7 @@ def test_init_kwargs_override_dotenv_and_config_yaml(tmp_path: Path) -> None:
 def test_deepgram_diarization_does_not_require_hf_token() -> None:
     config = PipelineConfig(
         transcriber="deepgram",
-        extractor="presidio",
+        extractor="custom",
         diarization_enabled=True,
         deepgram_api_key="test-deepgram",
         hf_token="",
@@ -202,7 +202,7 @@ def test_whisperx_diarization_requires_hf_token() -> None:
     with pytest.raises(ValueError, match="HF_TOKEN is required"):
         PipelineConfig(
             transcriber="whisperx",
-            extractor="presidio",
+            extractor="custom",
             diarization_enabled=True,
             gpu_enabled=True,
             hf_token="",
@@ -212,7 +212,7 @@ def test_whisperx_diarization_requires_hf_token() -> None:
 def test_non_diarized_run_does_not_require_hf_token() -> None:
     config = PipelineConfig(
         transcriber="whisperx",
-        extractor="presidio",
+        extractor="custom",
         diarization_enabled=False,
         gpu_enabled=True,
         hf_token="",
@@ -227,7 +227,7 @@ def test_denoising_requires_gpu_enabled() -> None:
     with pytest.raises(ValueError, match="denoising_enabled=True requires gpu_enabled=True"):
         PipelineConfig(
             transcriber="deepgram",
-            extractor="presidio",
+            extractor="custom",
             denoising_enabled=True,
             gpu_enabled=False,
             deepgram_api_key="test-deepgram",
@@ -235,7 +235,7 @@ def test_denoising_requires_gpu_enabled() -> None:
 
 
 def test_failed_sample_is_valid() -> None:
-    config = PipelineConfig(transcriber="whisperx", extractor="presidio", sample="failed")
+    config = PipelineConfig(transcriber="whisperx", extractor="custom", sample="failed")
 
     assert config.sample == "failed"
 
@@ -243,7 +243,7 @@ def test_failed_sample_is_valid() -> None:
 def test_extraction_only_does_not_require_transcriber_key(tmp_path: Path) -> None:
     config = PipelineConfig(
         transcriber="deepgram",
-        extractor="presidio",
+        extractor="custom",
         extraction_only=True,
         transcriptions_path=str(tmp_path / "transcriptions.json"),
         deepgram_api_key="",
@@ -257,7 +257,7 @@ def test_extraction_only_requires_transcriptions_path() -> None:
     with pytest.raises(ValueError, match="transcriptions_path is required"):
         PipelineConfig(
             transcriber="deepgram",
-            extractor="presidio",
+            extractor="custom",
             extraction_only=True,
             transcriptions_path=None,
         )

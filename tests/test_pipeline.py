@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from phonebot.config import PipelineConfig
-from phonebot.diarization.pyannote import PyAnnoteDiarizer
 from phonebot.extraction.base import (
     REGISTRY as EXTRACTION_REGISTRY,
 )
@@ -31,7 +30,7 @@ from phonebot.transcription import TranscriberBase
 
 
 # ---------------------------------------------------------------------------
-# Step 7 – MockTranscriber: happy-path stub returning a fixed transcript
+# Step 7 – MockTranscriber: happy-path fake returning a fixed transcript
 # ---------------------------------------------------------------------------
 class MockTranscriber(TranscriberBase):
     def __init__(self, config=None) -> None:  # noqa: ANN001
@@ -172,14 +171,10 @@ def _make_logger() -> logging.Logger:
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers: shared backend stubs for run_single tests
+# Internal helpers: shared fake backends for run_single tests
 # ---------------------------------------------------------------------------
 def _make_preprocessor() -> PreprocessorBase:
     return PreprocessorBase()
-
-
-def _make_diarizer() -> PyAnnoteDiarizer:
-    return PyAnnoteDiarizer()
 
 
 def _write_prompt(tmp_path: Path) -> Path:
@@ -204,7 +199,6 @@ async def test_run_single_happy_path(tmp_path: Path) -> None:
         extractor=MockExtractor(),
         prompt=_make_prompt(),
         preprocessor=_make_preprocessor(),
-        diarizer=_make_diarizer(),
     )
 
     assert isinstance(case, PipelineCaseResult)
@@ -232,7 +226,6 @@ async def test_run_single_logs_enhancement_step(
         extractor=MockExtractor(),
         prompt=_make_prompt(),
         preprocessor=_make_preprocessor(),
-        diarizer=_make_diarizer(),
         idx=2,
         total=10,
     )
@@ -254,7 +247,6 @@ async def test_run_single_missing_file(tmp_path: Path) -> None:
         extractor=MockExtractor(),
         prompt=_make_prompt(),
         preprocessor=_make_preprocessor(),
-        diarizer=_make_diarizer(),
     )
 
     assert case.caller_info.first_name is None
@@ -278,7 +270,6 @@ async def test_run_single_transcription_failure(tmp_path: Path) -> None:
         extractor=MockExtractor(),
         prompt=_make_prompt(),
         preprocessor=_make_preprocessor(),
-        diarizer=_make_diarizer(),
     )
 
     assert case.caller_info.first_name is None
@@ -304,7 +295,6 @@ async def test_run_single_extraction_failure(tmp_path: Path) -> None:
         extractor=FailingExtractor(),
         prompt=_make_prompt(),
         preprocessor=_make_preprocessor(),
-        diarizer=_make_diarizer(),
     )
 
     assert case.caller_info.first_name is None
@@ -418,7 +408,7 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
 ) -> None:
     TranscriptEchoExtractor.seen_transcripts = []
     monkeypatch.setitem(TRANSCRIPTION_REGISTRY, "deepgram", ExplodingTranscriber)
-    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", TranscriptEchoExtractor)
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "test_extractor", TranscriptEchoExtractor)
     fake_fastenhancer = types.ModuleType("phonebot.preprocessing.fastenhancer")
     fake_fastenhancer.FastEnhancerPreprocessor = ExplodingFastEnhancerPreprocessor  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "phonebot.preprocessing.fastenhancer", fake_fastenhancer)
@@ -433,7 +423,7 @@ async def test_extraction_only_uses_transcripts_and_skips_transcriber(
     prompt_yaml = _write_prompt(tmp_path)
     config = PipelineConfig.model_construct(
         transcriber="deepgram",
-        extractor="presidio",
+        extractor="test_extractor",
         sample="dev",
         extraction_only=True,
         transcriptions_path=str(transcriptions_path),
@@ -463,7 +453,7 @@ async def test_extraction_only_fails_fast_for_missing_transcript(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", TranscriptEchoExtractor)
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "test_extractor", TranscriptEchoExtractor)
     transcriptions_path = tmp_path / "transcriptions.json"
     transcriptions_path.write_text(
         TranscriptionArtifact(transcriptions=[]).model_dump_json(),
@@ -472,7 +462,7 @@ async def test_extraction_only_fails_fast_for_missing_transcript(
     prompt_yaml = _write_prompt(tmp_path)
     config = PipelineConfig.model_construct(
         transcriber="deepgram",
-        extractor="presidio",
+        extractor="test_extractor",
         sample="dev",
         extraction_only=True,
         transcriptions_path=str(transcriptions_path),
@@ -495,7 +485,7 @@ async def test_extraction_only_preserves_transcript_on_extraction_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setitem(EXTRACTION_REGISTRY, "presidio", FailingExtractor)
+    monkeypatch.setitem(EXTRACTION_REGISTRY, "test_extractor", FailingExtractor)
     transcriptions_path = tmp_path / "transcriptions.json"
     transcriptions_path.write_text(
         TranscriptionArtifact(
@@ -506,7 +496,7 @@ async def test_extraction_only_preserves_transcript_on_extraction_failure(
     prompt_yaml = _write_prompt(tmp_path)
     config = PipelineConfig.model_construct(
         transcriber="deepgram",
-        extractor="presidio",
+        extractor="test_extractor",
         sample="dev",
         extraction_only=True,
         transcriptions_path=str(transcriptions_path),

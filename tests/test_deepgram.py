@@ -55,7 +55,7 @@ def _mock_transcribe_file(t: DeepgramTranscriber, response: MagicMock) -> AsyncM
 
 
 # ---------------------------------------------------------------------------
-# Test 1: non-diarized path — segments=None, raw_text returned
+# Test 1: non-diarized path returns raw_text
 # ---------------------------------------------------------------------------
 
 
@@ -75,7 +75,7 @@ def test_transcribe_non_diarized(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 2: diarized path — segments populated, speaker labels formatted correctly
+# Test 2: diarized path populates segments
 # ---------------------------------------------------------------------------
 
 

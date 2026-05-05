@@ -50,7 +50,6 @@ class OpenAILLMTranscriber(TranscriberBase):
                     )
                     for seg in raw_segments
                 ]
-                # Use response.text if present, else join segment texts.
                 raw_text: str = getattr(response, "text", None) or " ".join(
                     seg.text for seg in segments
                 )
@@ -60,18 +59,18 @@ class OpenAILLMTranscriber(TranscriberBase):
                     segments=segments,
                     supports_diarization=True,
                 )
-            else:
-                response = await self._client.audio.transcriptions.create(
-                    model=self._transcriber_model,
-                    file=fh,
-                    response_format="json",
-                )
-                # response.text is a str for json format; guard against SDK fallback.
-                text_val = response.text
-                raw_text = text_val if isinstance(text_val, str) else str(text_val)
-                return TranscriptionResult(
-                    id=audio.id,
-                    raw_text=raw_text,
-                    segments=None,
-                    supports_diarization=False,
-                )
+
+            response = await self._client.audio.transcriptions.create(
+                model=self._transcriber_model,
+                file=fh,
+                response_format="json",
+            )
+            # response.text is a str for json format; guard against SDK fallback.
+            text_val = response.text
+            raw_text = text_val if isinstance(text_val, str) else str(text_val)
+            return TranscriptionResult(
+                id=audio.id,
+                raw_text=raw_text,
+                segments=None,
+                supports_diarization=False,
+            )

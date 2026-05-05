@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import Callable
-from typing import Any, ClassVar
+from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -16,16 +16,13 @@ class ParakeetTranscriber(TranscriberBase):
     """NVIDIA Parakeet transcription backend (GPU required).
 
     Uses the NeMo FastConformer-TDT model (parakeet-tdt-0.6b-v3) for
-    transcription-only inference. Produces word/segment timestamps but no
-    speaker diarization. Requires nemo_toolkit[asr] (gpu dependency group)
-    and a CUDA-capable GPU (gpu_enabled=True in config).
+    transcription-only inference. Requires nemo_toolkit[asr] (gpu dependency
+    group) and a CUDA-capable GPU (gpu_enabled=True in config).
 
     @retry handles transient failures with exponential back-off (3 attempts).
     All blocking GPU calls are dispatched via asyncio.to_thread() to avoid freezing
     the event loop.
     """
-
-    supports_diarization: ClassVar[bool] = False
 
     def __init__(self, config: PipelineConfig) -> None:
         if not config.gpu_enabled:

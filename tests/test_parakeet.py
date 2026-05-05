@@ -71,7 +71,7 @@ def test_parakeet_language_kwargs_use_target_lang_for_prompt_model() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 4: primary success path — raw_text, segments=None, supports_diarization=False
+# Test 4: primary success path returns raw_text without speaker segments
 # ---------------------------------------------------------------------------
 
 

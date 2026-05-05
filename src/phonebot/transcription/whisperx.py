@@ -14,7 +14,8 @@ from phonebot.transcription.base import TranscriberBase
 class WhisperXTranscriber(TranscriberBase):
     """WhisperX transcription backend (GPU required).
 
-    Supports word-level timestamps and optional speaker diarization via pyannote.
+    Supports word-level timestamps and optional speaker diarization through
+    WhisperX's integrated diarization path.
     Requires the whisperx package (uv sync --group gpu) and a CUDA-capable GPU.
 
     Config knobs (all via config.yaml):
@@ -22,7 +23,7 @@ class WhisperXTranscriber(TranscriberBase):
       - whisperx_model: model size (e.g. large-v2)
       - whisperx_compute_type: float16 | int8 | float32 (VRAM/accuracy tradeoff)
       - whisperx_language: language hint, e.g. "de"; "auto" = auto-detect
-      - diarization_enabled: whether to run speaker diarization (requires hf_token)
+      - diarization_enabled: whether to run integrated speaker diarization
 
     @retry handles transient failures with exponential back-off (3 attempts).
     All blocking GPU calls are dispatched via asyncio.to_thread() to avoid freezing
@@ -38,7 +39,7 @@ class WhisperXTranscriber(TranscriberBase):
         # Deferred imports: whisperx requires CUDA and lives in the optional 'gpu'
         # dependency group.  Stored as instance attributes to allow test injection
         # via obj._wx = MagicMock() / obj._wxd = MagicMock() without installing
-        # the real package.  DiarizationPipeline is in whisperx.diarize, NOT on
+        # the real package. DiarizationPipeline is in whisperx.diarize, not on
         # the whisperx top-level namespace, hence a separate import.
         import whisperx as _wx  # type: ignore[import-not-found]
         import whisperx.diarize as _wxd  # type: ignore[import-not-found]
@@ -62,16 +63,13 @@ class WhisperXTranscriber(TranscriberBase):
             compute_type=self._compute_type,
         )
 
-        # Patch the pyannote VAD segmentation batch_size.  whisperx's load_model
-        # accepts batch_size only for the Whisper ASR path; the VAD model (pyannote
-        # Inference) keeps its own hardcoded default of 32 which causes CUDA OOM on
-        # small GPUs.  We override it here after load.
+        # Patch VAD segmentation batch size after load for smaller GPUs.
         try:
             self._model.vad_model.vad_pipeline._segmentation.batch_size = (
                 config.whisperx_vad_batch_size
             )
         except AttributeError:
-            pass  # non-pyannote VAD backend — no-op
+            pass
 
     @retry(
         stop=stop_after_attempt(3),
@@ -101,8 +99,6 @@ class WhisperXTranscriber(TranscriberBase):
                 supports_diarization=False,
             )
 
-        # --- Diarized path ---------------------------------------------------
-        # 1. Align: produces word-level timestamps required for speaker assignment.
         model_a, metadata = self._wx.load_align_model(
             language_code=result["language"],
             device=self._device,
@@ -117,14 +113,12 @@ class WhisperXTranscriber(TranscriberBase):
             print_progress=False,
         )
 
-        # 2. Free alignment model VRAM before loading diarization model.
         del model_a
         gc.collect()
         import torch  # type: ignore[import-not-found]
 
         torch.cuda.empty_cache()
 
-        # 3. Diarize and assign speaker labels.
         diarize_model = self._wxd.DiarizationPipeline(
             token=self._hf_token,
             device=self._device,

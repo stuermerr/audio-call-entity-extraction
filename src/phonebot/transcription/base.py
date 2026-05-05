@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from phonebot.schemas import AudioInput, TranscriptionResult
-
-if TYPE_CHECKING:
-    pass
 
 REGISTRY: dict[str, type[TranscriberBase]] = {}
 """Backend registry. Populated by __init__.py to avoid circular imports."""

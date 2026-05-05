@@ -60,7 +60,7 @@ def test_whisperx_language_auto_maps_to_auto_detection() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 2: non-diarized path — segments=None, raw_text joined, no diarize calls
+# Test 2: non-diarized path returns joined raw_text
 # ---------------------------------------------------------------------------
 
 
@@ -82,13 +82,12 @@ def test_transcribe_non_diarized(tmp_path: Path) -> None:
     assert result.segments is None
     assert result.supports_diarization is False
 
-    # Diarization machinery must not have been touched
     t._wx.load_align_model.assert_not_called()
     t._wxd.DiarizationPipeline.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
-# Test 3: diarized path — segments populated, speaker labels assigned
+# Test 3: diarized path populates speaker segments
 # ---------------------------------------------------------------------------
 
 
@@ -115,9 +114,6 @@ def test_transcribe_diarized(tmp_path: Path) -> None:
         "language": "de",
     }
 
-    # torch is imported lazily inside _transcribe_sync with a local `import torch`.
-    # Inject a lightweight fake into sys.modules so the import doesn't fail when
-    # the real torch package isn't installed in the test environment.
     import sys
     import types
 

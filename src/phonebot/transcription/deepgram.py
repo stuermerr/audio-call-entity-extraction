@@ -13,8 +13,8 @@ from phonebot.transcription.base import TranscriberBase
 class DeepgramTranscriber(TranscriberBase):
     """Deepgram transcription backend using the official deepgram-sdk.
 
-    Supports both plain transcript (non-diarized) and speaker-segmented
-    (diarized) paths via the Deepgram pre-recorded audio API.
+    Supports both plain transcript and speaker-segmented paths via the Deepgram
+    pre-recorded audio API.
 
     @retry handles transient API failures with exponential back-off (up to
     3 attempts); reraise=True re-raises the last exception on exhaustion so the

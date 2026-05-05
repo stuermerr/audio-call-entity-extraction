@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 
 from phonebot.config import PipelineConfig
-from phonebot.diarization.pyannote import PyAnnoteDiarizer
 from phonebot.extraction.base import (
     _DEFAULT_PROMPT,
     ExtractorBase,
@@ -35,8 +34,8 @@ from phonebot.transcription import TranscriberBase
 
 # ---------------------------------------------------------------------------
 # Required environment variable per backend key.
-# Only keys present here are validated; unknown keys skip the check silently
-# (stubs raise NotImplementedError on use anyway).
+# Only keys present here are validated; registry validation handles unknown
+# backend names before any batch work starts.
 # ---------------------------------------------------------------------------
 _REQUIRED_ENV_VARS: dict[str, str] = {
     "openai_llm": "OPENAI_API_KEY",
@@ -53,12 +52,11 @@ async def run_single(
     extractor: ExtractorBase,
     prompt: PromptTemplate,
     preprocessor: PreprocessorBase,
-    diarizer: PyAnnoteDiarizer,
     transcription_results: list[TranscriptionResult] | None = None,
     idx: int = 0,
     total: int = 1,
 ) -> PipelineCaseResult:
-    """Transcribe, optionally diarize, and extract caller info from one audio file.
+    """Transcribe and extract caller info from one audio file.
 
     Returns a ``PipelineCaseResult`` in all cases:
     - ``transcript`` is ``None`` on file-not-found or transcription failure.
@@ -92,15 +90,6 @@ async def run_single(
             caller_info=CallerInfo(id=audio.id, file=str(audio.file)),
             transcript=None,
         )
-
-    # 5d. Diarization: only when enabled AND transcriber lacks native speaker segments
-    if config.diarization_enabled and not transcriber.supports_diarization:
-        logger.info("%s — diarizing", prefix)
-        try:
-            result = await diarizer.diarize(result)
-        except Exception:
-            logger.warning("%s — diarization failed, using raw_text", prefix, exc_info=True)
-            # result unchanged → passthrough
 
     if transcription_results is not None:
         transcription_results.append(result)
@@ -235,7 +224,7 @@ async def run_batch(
     prompt = ExtractorBase.load_prompt(prompt_path)
     logger.info("Using extraction prompt: %s", prompt_path)
 
-    # 6f. Preprocessor + diarizer
+    # 6f. Preprocessor
     if config.denoising_enabled and not config.extraction_only:
         from phonebot.preprocessing.fastenhancer import FastEnhancerPreprocessor
 
@@ -251,8 +240,6 @@ async def run_batch(
         logger.info("Denoising enabled: writing enhanced audio to %s", work_dir)
     else:
         preprocessor = PreprocessorBase()
-    diarizer = PyAnnoteDiarizer()
-
     # 6g. Persist config snapshot — include resolved prompt path so it is never null
     save_config_snapshot(
         config,
@@ -297,7 +284,6 @@ async def run_batch(
                 extractor=extractor,
                 prompt=prompt,
                 preprocessor=preprocessor,
-                diarizer=diarizer,
                 transcription_results=transcriptions,
                 idx=idx,
                 total=total,
@@ -317,7 +303,7 @@ async def run_batch(
         cases=cases,
     )
 
-    # 6j. Persist results — exclude 'cases' to keep results.json backward-compatible
+    # 6j. Persist results — exclude in-memory case diagnostics from results.json
     results_path = Path(output_dir) / run_id / "results.json"
     results_path.write_text(output.model_dump_json(indent=2, exclude={"cases"}), encoding="utf-8")
 
