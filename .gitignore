@@ -1,6 +1,6 @@
 .env
 
-data/
+config.yaml
 outputs/*
 scripts/debug_single_call.py
 docs/
