@@ -3,7 +3,9 @@
 data/
 outputs/*
 scripts/debug_single_call.py
+docs/
 
+/prompts/prompt_optimization/
 /*.md
 !/README.md
 
