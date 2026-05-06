@@ -6,7 +6,11 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import static_ffmpeg
 import typer
+
+# Ensure ffmpeg binary is available on PATH (downloaded once, then cached)
+static_ffmpeg.add_paths()
 
 from phonebot.config import PipelineConfig
 from phonebot.evaluation import Evaluator

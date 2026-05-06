@@ -6,7 +6,7 @@ A post-processing pipeline that transcribes German phone-call recordings and ext
 
 ## ⚡ TL;DR — Run locally with benchmark settings
 
-**Prerequisites:** Python ≥ 3.13, [uv](https://github.com/astral-sh/uv), ffmpeg, CUDA (for denoising), OpenAI API key.
+**Prerequisites:** [uv](https://github.com/astral-sh/uv), NVIDIA GPU (for denoising), OpenAI API key.
 
 ```bash
 # 1. Clone and enter the repo
@@ -128,17 +128,6 @@ Copy `.env.example` to `.env` and fill in the keys you need:
 cp .env.example .env
 ```
 
-**System dependency — FFmpeg:** required at runtime by `pydub`, `pyannote`, and `whisperx` for audio decoding. Docker images include it automatically. For local installs:
-
-```bash
-# Debian / Ubuntu
-sudo apt install ffmpeg
-
-# macOS
-brew install ffmpeg
-```
-
-
 | Variable                                                      | Required for                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `OPENAI_API_KEY`                                              | `openai_llm` transcriber and `llm` extractor (ALWAYS REQUIRED)         |
@@ -151,7 +140,7 @@ brew install ffmpeg
 
 ### Local
 
-Requires Python `>=3.13, <3.14` and [uv](https://github.com/astral-sh/uv).
+Requires [uv](https://github.com/astral-sh/uv) (Python version is enforced automatically by `pyproject.toml`).
 
 **GPU-benchmark** — `openai_llm` transcriber + FastEnhancer denoising (onnxruntime-gpu only, no whisperx/nemo; faster install than full gpu path, reproduces (close-to) best-accuracy results)
 
