@@ -85,43 +85,6 @@ Default GPU-Benchmark settings are the same as for the Benchmark run.
 
 ---
 
-## 🧠 Design Decisions
-
-### Modular transcription & extraction backends
-
-`TranscriberBase` and `ExtractorBase` are abstract base classes backed by a runtime `REGISTRY` dict (`transcription/base.py`, `extraction/base.py`). Swapping a backend requires only a `config.yaml` field change — no pipeline code edits. This makes A/B comparison between backends trivial and keeps the core orchestration (`pipeline.py`) backend-agnostic.
-
-### LLM extraction with schema-constrained output
-
-Structured JSON output is enforced via a Pydantic `CallerInfo` model. This tolerates varied LLM phrasing, avoids brittle regex-based parsing, and produces a typed, validatable object. The extraction model is independently configurable from the transcription model via the `llm_extractor_model` config field.
-
-### External versioned prompts
-
-Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, completely decoupled from code. `--extractor-prompt-file` enables runtime swapping for A/B testing without a code commit.
-
-### Extraction-only mode & cost separation
-
-`transcriptions.json` persists raw transcripts so prompt-iteration reruns skip expensive transcription API calls. This cleanly separates transcription quality concerns from extraction quality concerns and drastically reduces extraction iteration runtime/cost.
-
-### Library-backed normalization
-
-`phonenumbers` (E.164 canonicalization) and `email-validator` replace hand-rolled regexes in `normalization.py`. This makes the normalizers robust to international phone formats and varied email representations.
-
-### Optional GPU denoising
-
-FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker images. The CPU/API path remains gpu-dependency-free and the denoising step can be toggled without any code change.
-
-Two GPU dependency groups are available depending on whether you only need FastEnhancer denoising or the full local GPU stack:
-
-
-| Group           | Major packages added                     | Use with                                                                                              |
-| --------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `gpu-benchmark` | `onnxruntime-gpu`, cuda runtime wheels   | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build without `whisperx`, NeMo, or torch |
-| `gpu`           | `whisperx`, `nemo_toolkit[asr]`, `torch` | `whisperx` or `parakeet` transcribers; also supports FastEnhancer denoising                           |
-
-
----
-
 ## 🚀 Usage
 
 ### Prerequisites
@@ -301,6 +264,43 @@ Each run writes to `outputs/{run_id}/`:
 | `case_report.json`    | Transcript + prediction + expected + per-field match per call                               |
 | `config.yaml`         | Non-secret config snapshot for reproducibility                                              |
 | `run.log`             | Structured run log                                                                          |
+
+
+---
+
+## 🧠 Design Decisions
+
+### Modular transcription & extraction backends
+
+`TranscriberBase` and `ExtractorBase` are abstract base classes backed by a runtime `REGISTRY` dict (`transcription/base.py`, `extraction/base.py`). Swapping a backend requires only a `config.yaml` field change — no pipeline code edits. This makes A/B comparison between backends trivial and keeps the core orchestration (`pipeline.py`) backend-agnostic.
+
+### LLM extraction with schema-constrained output
+
+Structured JSON output is enforced via a Pydantic `CallerInfo` model. This tolerates varied LLM phrasing, avoids brittle regex-based parsing, and produces a typed, validatable object. The extraction model is independently configurable from the transcription model via the `llm_extractor_model` config field.
+
+### External versioned prompts
+
+Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, completely decoupled from code. `--extractor-prompt-file` enables runtime swapping for A/B testing without a code commit.
+
+### Extraction-only mode & cost separation
+
+`transcriptions.json` persists raw transcripts so prompt-iteration reruns skip expensive transcription API calls. This cleanly separates transcription quality concerns from extraction quality concerns and drastically reduces extraction iteration runtime/cost.
+
+### Library-backed normalization
+
+`phonenumbers` (E.164 canonicalization) and `email-validator` replace hand-rolled regexes in `normalization.py`. This makes the normalizers robust to international phone formats and varied email representations.
+
+### Optional GPU denoising
+
+FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker images. The CPU/API path remains gpu-dependency-free and the denoising step can be toggled without any code change.
+
+Two GPU dependency groups are available depending on whether you only need FastEnhancer denoising or the full local GPU stack:
+
+
+| Group           | Major packages added                     | Use with                                                                                              |
+| --------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `gpu-benchmark` | `onnxruntime-gpu`, cuda runtime wheels   | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build without `whisperx`, NeMo, or torch |
+| `gpu`           | `whisperx`, `nemo_toolkit[asr]`, `torch` | `whisperx` or `parakeet` transcribers; also supports FastEnhancer denoising                           |
 
 
 ---
