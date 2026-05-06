@@ -10,7 +10,7 @@ A post-processing pipeline that transcribes German phone-call recordings and ext
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/stuermerr/audio-call-entity-extraction.git && cd phonebot_challenge
+git clone https://github.com/stuermerr/audio-call-entity-extraction.git && cd audio-call-entity-extraction/
 
 # 2. Set your OpenAI API key
 cp .env.example .env
@@ -127,6 +127,7 @@ Copy `.env.example` to `.env` and fill in the keys you need:
 ```bash
 cp .env.example .env
 ```
+
 
 | Variable                                                      | Required for                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
