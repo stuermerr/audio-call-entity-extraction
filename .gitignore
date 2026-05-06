@@ -4,6 +4,7 @@ config.yaml
 outputs/*
 scripts/split.py
 docs/
+data/.DS_Store
 
 /prompts/prompt_optimization/
 /*.md
