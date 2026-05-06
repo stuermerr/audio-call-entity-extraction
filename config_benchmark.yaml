@@ -6,7 +6,7 @@
 # Docker:  docker build -t phonebot:gpu-benchmark --build-arg INSTALL_GROUP=gpu-benchmark .
 # Local:   uv sync --frozen --no-dev --group gpu-benchmark
 #
-# Achieved 94.2 % overall accuracy on the 30-call dataset.
+# Achieved 95.8 % overall accuracy on the 30-call dataset.
 
 transcriber: openai_llm  # openai_llm | deepgram | whisperx | parakeet
 extractor: llm  # currently only: llm
@@ -17,7 +17,6 @@ diarization_enabled: false  # native for OpenAI LLM/Deepgram
 gpu_enabled: true  # true enables GPU-backed backends and FastEnhancer denoising
 denoising_enabled: true  # true uses FastEnhancer (ONNX GPU); requires gpu-benchmark or gpu group
 langsmith_tracing: false  # true requires LANGSMITH_API_KEY; traces to LangSmith project
-sample: all  # dev | test | failed | all
 
 # LLM extraction
 llm_extractor_model: gpt-5.5  # OpenAI chat model used by extractor: llm
@@ -33,7 +32,6 @@ deepgram_smart_format: true  # Deepgram smart formatting
 
 # FastEnhancer denoising
 fastenhancer_model_url: https://github.com/aask1357/fastenhancer/releases/download/onnx-dns-v1.0.0/fastenhancer_l.onnx  # ONNX model URL; change variant suffix (_t/_b/_s/_m/_l).onnx or release tag
-fastenhancer_model_path:  # local ONNX path override; null = download from fastenhancer_model_url
 fastenhancer_hop_size: 100  # must match model variant: 256 for T/B/S, 160 for M, 100 for L
 
 # WhisperX (unused in benchmark run — transcriber is openai_llm)

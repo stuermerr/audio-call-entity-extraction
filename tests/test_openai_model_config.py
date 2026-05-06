@@ -58,7 +58,7 @@ async def test_openai_llm_transcriber_uses_configured_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_client = _FakeOpenAITranscriptionClient()
-    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda: fake_client)
+    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client)
     wav = tmp_path / "call.wav"
     wav.write_bytes(b"RIFF")
 
@@ -72,7 +72,7 @@ async def test_openai_llm_transcriber_uses_configured_diarization_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_client = _FakeOpenAITranscriptionClient()
-    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda: fake_client)
+    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client)
     wav = tmp_path / "call.wav"
     wav.write_bytes(b"RIFF")
 
@@ -208,7 +208,7 @@ def test_llm_extractor_wraps_openai_client_for_langsmith(
 
     monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
-    monkeypatch.setattr("phonebot.extraction.llm.openai.AsyncOpenAI", lambda: fake_client)
+    monkeypatch.setattr("phonebot.extraction.llm.openai.AsyncOpenAI", lambda **_kw: fake_client)
     monkeypatch.setattr("phonebot.extraction.llm.langsmith_tracing_enabled", lambda: True)
     monkeypatch.setattr("langsmith.wrappers.wrap_openai", fake_wrap_openai)
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import openai
 from pydantic import BaseModel, field_validator
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.extraction.base import _DEFAULT_PROMPT, ExtractorBase, PromptTemplate
@@ -20,6 +20,8 @@ from phonebot.observability import (
 from phonebot.schemas import CallerInfo
 
 _logger = logging.getLogger(__name__)
+
+_API_TIMEOUT_S = 30.0
 
 
 class _ExtractedFields(BaseModel):
@@ -106,7 +108,7 @@ class LLMExtractor(ExtractorBase):
         self._client: openai.AsyncOpenAI | None = None
 
     def _build_client(self) -> openai.AsyncOpenAI:
-        client = openai.AsyncOpenAI()
+        client = openai.AsyncOpenAI(timeout=_API_TIMEOUT_S)
         if not langsmith_tracing_enabled():
             return client
 
@@ -130,6 +132,9 @@ class LLMExtractor(ExtractorBase):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(
+            (openai.APITimeoutError, openai.APIConnectionError, openai.RateLimitError)
+        ),
         reraise=True,
     )
     async def extract(

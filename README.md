@@ -46,9 +46,9 @@ config.yaml + .env
 | Backend      | Requires           | Notes                                                                        |
 | ------------ | ------------------ | ---------------------------------------------------------------------------- |
 | `whisperx`   | GPU image + CUDA   | `large-v3` (default); local; best accuracy, comparable with deepgram backend |
-| `parakeet`   | GPU image + CUDA   | parakeet-tdt-0.6b-v3; local                                                  |
+| `parakeet`   | GPU image + CUDA   | `parakeet-tdt-0.6b-v3`; local                                                |
 | `openai_llm` | `OPENAI_API_KEY`   | `gpt-4o-transcribe` (default); cloud (api)                                   |
-| `deepgram`   | `DEEPGRAM_API_KEY` | `nova-2` (default); cloud (api); fast, high-quality alternative              |
+| `deepgram`   | `DEEPGRAM_API_KEY` | `nova-2` (default); cloud (api); alternative to openai_llm                   |
 
 
 The transcription backend, models, and all tuneable parameters are controlled by `config.yaml` — no code changes required.
@@ -76,12 +76,12 @@ Best run on the provided 30-call dataset:
 | -------------- | --------- |
 | `first_name`   | 100.0%    |
 | `last_name`    | 86.7%     |
-| `email`        | 90.0%     |
+| `email`        | 96.7%     |
 | `phone_number` | 100.0%    |
-| **Overall**    | **94.2%** |
+| **Overall**    | **95.8%** |
 
 
-Default GPU-settings are the same as for the Benchmark run.
+Default GPU-Benchmark settings are the same as for the Benchmark run.
 
 ---
 
@@ -97,31 +97,27 @@ Structured JSON output is enforced via a Pydantic `CallerInfo` model. This toler
 
 ### External versioned prompts
 
-Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, completely decoupled from code. `--extractor-prompt-file` enables runtime swapping for A/B testing without a code commit. Prompt versions are retained in source control alongside the code that consumed them.
+Extraction prompts are external YAML/Jinja2 files under `prompts/extraction/`, completely decoupled from code. `--extractor-prompt-file` enables runtime swapping for A/B testing without a code commit.
 
 ### Extraction-only mode & cost separation
 
-`transcriptions.json` persists raw transcripts so prompt-iteration reruns skip expensive transcription API calls. This cleanly separates transcription quality concerns from extraction quality concerns and drastically reduces iteration cost.
-
-### Evaluation layer isolation
-
-`pipeline.py` never sees ground truth; `Evaluator` is a post-processing step that merges predictions with labels after inference. This keeps the runtime path clean and prevents any form of label leakage into the extraction or transcription steps.
+`transcriptions.json` persists raw transcripts so prompt-iteration reruns skip expensive transcription API calls. This cleanly separates transcription quality concerns from extraction quality concerns and drastically reduces extraction iteration runtime/cost.
 
 ### Library-backed normalization
 
-`phonenumbers` (E.164 canonicalization) and `email-validator` replace hand-rolled regexes in `normalization.py`. This makes the normalizers robust to international phone formats and varied email representations while reducing maintenance surface.
+`phonenumbers` (E.164 canonicalization) and `email-validator` replace hand-rolled regexes in `normalization.py`. This makes the normalizers robust to international phone formats and varied email representations.
 
 ### Optional GPU denoising
 
-FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker images. The CPU/API path remains dependency-free and the denoising step can be toggled without any code change.
+FastEnhancer ONNX preprocessing is gated behind `denoising_enabled: true` in `config.yaml` and is present only in the GPU Docker images. The CPU/API path remains gpu-dependency-free and the denoising step can be toggled without any code change.
 
-Two GPU dependency groups are available depending on which transcriber you use:
+Two GPU dependency groups are available depending on whether you only need FastEnhancer denoising or the full local GPU stack:
 
 
-| Group           | Packages                                            | Use with                                                                                   |
-| --------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `gpu-benchmark` | `onnxruntime-gpu`, `librosa`, `scipy`               | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build, no torch/CUDA download |
-| `gpu`           | above + `whisperx`, `nemo_toolkit[asr]`, torch/CUDA | `whisperx` or `parakeet` transcribers                                                      |
+| Group           | Major packages added                     | Use with                                                                                              |
+| --------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `gpu-benchmark` | `onnxruntime-gpu`, cuda runtime wheels   | `openai_llm` or `deepgram` + `denoising_enabled: true`; slim build without `whisperx`, NeMo, or torch |
+| `gpu`           | `whisperx`, `nemo_toolkit[asr]`, `torch` | `whisperx` or `parakeet` transcribers; also supports FastEnhancer denoising                           |
 
 
 ---

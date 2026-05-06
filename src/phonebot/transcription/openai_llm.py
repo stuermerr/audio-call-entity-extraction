@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import ClassVar
 
 import openai
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
 from phonebot.transcription.base import TranscriberBase
+
+_API_TIMEOUT_S = 30.0
 
 
 class OpenAILLMTranscriber(TranscriberBase):
@@ -24,11 +26,14 @@ class OpenAILLMTranscriber(TranscriberBase):
         self._diarization_enabled = config.diarization_enabled
         self._transcriber_model = config.openai_llm_transcriber_model
         self._diarization_model = config.openai_llm_diarization_model
-        self._client = openai.AsyncOpenAI()
+        self._client = openai.AsyncOpenAI(timeout=_API_TIMEOUT_S)
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(
+            (openai.APITimeoutError, openai.APIConnectionError, openai.RateLimitError)
+        ),
         reraise=True,
     )
     async def transcribe(self, audio: AudioInput) -> TranscriptionResult:

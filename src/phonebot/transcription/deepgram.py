@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+import httpx
 from deepgram import AsyncDeepgramClient  # type: ignore[import-untyped]
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
 from phonebot.transcription.base import TranscriberBase
+
+_API_TIMEOUT_S = 30.0
 
 
 class DeepgramTranscriber(TranscriberBase):
@@ -28,11 +31,12 @@ class DeepgramTranscriber(TranscriberBase):
         self._model = config.deepgram_model
         self._language = _deepgram_language_arg(config.deepgram_language)
         self._smart_format = config.deepgram_smart_format
-        self._client = AsyncDeepgramClient(api_key=config.deepgram_api_key)
+        self._client = AsyncDeepgramClient(api_key=config.deepgram_api_key, timeout=_API_TIMEOUT_S)
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
         reraise=True,
     )
     async def transcribe(self, audio: AudioInput) -> TranscriptionResult:
