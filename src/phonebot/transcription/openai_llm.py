@@ -7,7 +7,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
-from phonebot.transcription.base import TranscriberBase
+from phonebot.transcription.base import TranscriberBase, load_transcription_prompt
 
 _API_TIMEOUT_S = 30.0
 
@@ -18,6 +18,11 @@ class OpenAILLMTranscriber(TranscriberBase):
     @retry handles transient API failures with exponential back-off (up to
     3 attempts); reraise=True re-raises the last exception on exhaustion so the
     pipeline can catch it and produce null CallerInfo.
+
+    Transcription prompt injection:
+      Supported on gpt-4o-transcribe (non-diarize) via the ``prompt`` parameter.
+      NOT supported on gpt-4o-transcribe-diarize — prompt is silently skipped
+      on that path per the OpenAI API spec.
     """
 
     supports_diarization: ClassVar[bool] = True
@@ -26,6 +31,9 @@ class OpenAILLMTranscriber(TranscriberBase):
         self._diarization_enabled = config.diarization_enabled
         self._transcriber_model = config.openai_llm_transcriber_model
         self._diarization_model = config.openai_llm_diarization_model
+        self._transcription_prompt: str | None = load_transcription_prompt(
+            config.transcription_prompt_file
+        )
         self._client = openai.AsyncOpenAI(timeout=_API_TIMEOUT_S)
 
     @retry(
@@ -69,6 +77,7 @@ class OpenAILLMTranscriber(TranscriberBase):
                 model=self._transcriber_model,
                 file=fh,
                 response_format="json",
+                **({"prompt": self._transcription_prompt} if self._transcription_prompt else {}),
             )
             # response.text is a str for json format; guard against SDK fallback.
             text_val = response.text

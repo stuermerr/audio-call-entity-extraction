@@ -1,0 +1,39 @@
+# Transcription injection prompt — German phone calls (v1)
+#
+# This prompt is passed to the transcription model at inference time to bias
+# it toward correct spellings of names, email tokens, and domain labels that
+# appear in German-language contact-data calls.
+#
+# Mechanism:
+#   - WhisperX  : injected as asr_options["initial_prompt"] at load_model() time
+#   - gpt-4o-transcribe : injected as the `prompt` parameter on the API call
+#                         (not supported by gpt-4o-transcribe-diarize — skipped there)
+#
+# Design rules (per OpenAI Whisper prompting guide):
+#   - Written in the same language as the audio (German)
+#   - Glossary-style, not instruction-style — the model treats this as style/
+#     vocabulary biasing, not as instruction-following
+#   - Compact: entity examples are grouped so the highest-value cues appear early
+#   - No exact name matches with actual recording entities in this repo's dataset
+#   - Each entry represents a confusable phonetic pattern observed in benchmarks
+#   - Full-name + email examples are paired to bias local-part spellings
+#
+# Patterns addressed (derived from benchmark failures across all runs):
+#   - Spanish diacritics (García→Garcia, Martínez→Martinez): use López, Rodríguez
+#   - Swedish double-s (Andersson→Anderson): use Eriksson, Svensson
+#   - French silent consonants (Lefebvre→Lefevre): use Renault, Beaumont
+#   - Scandinavian special chars (ø, å): use Søren, Jørgensen, Bjørn
+#   - German umlauts on non-German speakers' names: Möller, Küppers, Körner
+#   - Ñ tilde stripped: Peña, Ibáñez, Muñoz
+#   - Apostroph in Irish/French names (O'Brien→OBrien): use O'Connor, D'Angelo
+#   - Polish diacritics (Wiśniewski, Wójcik)
+#   - Double-letter surnames simplified (Hoffmann→Hofman type errors): Hartmann, Brückmann
+#   - Email underscore vs hyphen distinction
+#   - Email domain phonetic mangling (jahu→yahoo, gee-mail→gmail)
+
+prompt: |
+  Vorname: Alina, Timo, Elena, Viktor, José, María, Søren, Bjørn, André, Benoît, Günther, Rüdiger, Dario, Amira, Yasin, Noemi.
+  Nachname: López, Rodríguez, Hernández, Jiménez, Peña, Ibáñez, Eriksson, Svensson, Björk, Jørgensen, Renault, Beaumont, Lecomte, Möller, Küppers, Körner, Großmann, Weiß, Brückmann, O'Connor, O'Neill, D'Angelo, D'Amico, Wiśniewski, Wójcik, Esposito, Ferrari, Nakamura, Watanabe, Khalil, Mansour, Ferreira, Carvalho, Zhang, Muñoz.
+  Vollständiger Name plus E-Mail: Elena López, elena.lopez@gmail.com; Timo Brückmann, timo-brueckmann@gmx.de; André Beaumont, a.beaumont@outlook.com; Søren Jørgensen, soeren_joergensen@yahoo.com; Noemi Wiśniewski, noemi.wisniewski@protonmail.com; Dario D'Angelo, dario.dangelo@libero.it.
+  E-Mail-Domänen: gmail.com, gmx.de, gmx.net, web.de, t-online.de, outlook.com, outlook.de, hotmail.com, hotmail.de, yahoo.com, yahoo.de, freenet.de, icloud.com, libero.it, uol.com.br, protonmail.com.
+  Telefonnummer-Beispiele: +49 30 1234567; +49 89 9876543; 0049 221 5558899; 0049 40 667788; +49 0 8 6 54 3 2 6 88;

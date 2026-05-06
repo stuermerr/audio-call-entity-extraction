@@ -100,6 +100,16 @@ class PipelineConfig(BaseSettings):
             "for A/B testing."
         ),
     )
+    transcription_prompt_file: str | None = Field(
+        default=None,
+        description=(
+            "Path to a YAML transcription prompt file (must contain a top-level 'prompt' key). "
+            "Injected into WhisperX via asr_options['initial_prompt'] and into "
+            "gpt-4o-transcribe via the 'prompt' API parameter. "
+            "Has no effect on gpt-4o-transcribe-diarize (not supported by that model). "
+            "Set to e.g. 'prompts/transcription/de_v1.yaml' to enable."
+        ),
+    )
     openai_llm_transcriber_model: str = Field(
         default="gpt-4o-transcribe",
         description="OpenAI model used by the openai_llm transcription backend.",
