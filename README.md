@@ -4,6 +4,39 @@ A post-processing pipeline that transcribes German phone-call recordings and ext
 
 ---
 
+## ⚡ TL;DR — Run locally with benchmark settings
+
+**Prerequisites:** Python ≥ 3.13, [uv](https://github.com/astral-sh/uv), ffmpeg, CUDA (for denoising), OpenAI API key.
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/stuermerr/audio-call-entity-extraction.git && cd phonebot_challenge
+
+# 2. Set your OpenAI API key
+cp .env.example .env
+# → edit .env and set OPENAI_API_KEY=sk-...
+
+# 3. Install dependencies (slim GPU build — onnxruntime-gpu only, no torch/whisperx)
+cp config_benchmark.yaml config.yaml
+uv sync --frozen --no-dev --group gpu-benchmark
+
+# 4. Run
+uv run phonebot
+# → results written to outputs/<run_id>/results.md (and results.json)
+```
+
+**No GPU?** Use the CPU/API path instead (skips FastEnhancer denoising; ~1–5 % lower accuracy):
+
+```bash
+cp config_cpu.yaml config.yaml
+uv sync --frozen --no-dev
+uv run phonebot
+```
+
+See [Usage](#-usage) for Docker variants, extraction-only mode, and all CLI options.
+
+---
+
 ## 🔍 What it does
 
 Phonebot takes raw `.wav` recordings from a phonebot IVR system, transcribes them (cloud or local), and extracts structured caller fields:
