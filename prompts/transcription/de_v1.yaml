@@ -32,6 +32,7 @@
 #   - Email domain phonetic mangling (jahu→yahoo, gee-mail→gmail)
 
 prompt: |
-  Alina, Timo, Elena, Viktor, José, María, Inés, Søren, Bjørn, André, Benoît, Günther, Dario, Amira, Noemi.
-  Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Karlsson, Nilsson, Svensson, Björk, Jørgensen, Renault, Moreau, Leclerc, Beaumont, Möller, Küppers, Körner, Großmann, Weiß, Brückmann, O'Connor, O'Neill, D'Angelo, D'Amico, Wiśniewski, Wójcik, Esposito, Ferrari, Nakamura, Watanabe, Mansour, Ferreira, Carvalho, Zhang, Muñoz.
-  gmail.com, gmx.de, gmx.net, web.de, t-online.de, outlook.com, outlook.de, hotmail.com, hotmail.de, yahoo.com, yahoo.de, freenet.de, icloud.com, libero.it, uol.com.br, protonmail.com.
+  Namen: Alina, Timo, Elena, Viktor, José, María, Inés, Søren, Bjørn, André, Benoît, Günther, Dario, Amira, Noemi.
+  Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Karlsson, Nilsson, Svensson, Björk, Jørgensen, Renault,
+  Moreau, Leclerc, Leclerc, Lemaire, Leroux, Legrand, Beaumont, Möller, Küppers, Körner, Großmann, Weiß, Brückmann, O'Connor, O'Neill, D'Angelo, D'Amico, Wiśniewski, Wójcik, Esposito, Ferrari, Nakamura, Watanabe, Mansour, Ferreira, Carvalho, Zhang, Muñoz.
+  Email-domains: gmail.com, gmx.de, gmx.net, web.de, t-online.de, outlook.com, outlook.de, hotmail.com, hotmail.de, yahoo.com, yahoo.de, freenet.de, icloud.com.

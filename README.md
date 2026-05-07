@@ -1,4 +1,4 @@
-# 📞 Phonebot — Audio Call Entity Extraction
+#  📞 Phonebot — Audio Call Entity Extraction
 
 A pipeline that transcribes German phone-call recordings and extracts structured caller data (`first_name`, `last_name`, `email`, `phone_number`) using a configurable transcription backend and a schema-constrained LLM extractor.
 
@@ -6,7 +6,7 @@ A pipeline that transcribes German phone-call recordings and extracts structured
 
 ## ⚡ TL;DR
 
-### Brief documentation
+### Run benchmark
 
 **Prerequisites:** [uv](https://github.com/astral-sh/uv) package manager, NVIDIA GPU (for denoising), OpenAI API key.
 
@@ -27,7 +27,7 @@ uv run phonebot
 # → results written to outputs/<run_id>/results.md (and results.json)
 ```
 
-**No GPU?** Use the CPU/API path instead (skips FastEnhancer denoising; ~1–5 % lower accuracy):
+**No GPU?** Use the CPU/API path instead (skips FastEnhancer denoising; ~2–5 % lower accuracy):
 
 ```bash
 cp config_cpu.yaml config.yaml
@@ -40,18 +40,18 @@ See [Usage](#-usage) for Docker variants, extraction-only mode, and all CLI opti
 ### Key design decisions
 
 
-| Area              | Decision                                                                                | Tradeoff / Rationale                                                                                                                                                                                                                                  |
-| ----------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Pipeline**      | Modular preprocessing → transcription → extraction instead of one-shot multimodal model | More orchestration, but better maintainability, observability, and backend comparison                                                                                                                                                                 |
-| **Backends**      | `TranscriberBase` and `ExtractorBase` use runtime registries                            | Small abstraction overhead, but backend swaps need only `config.yaml`, no pipeline edits                                                                                                                                                              |
-| **Preprocessing** | Optional FastEnhancer denoising                                                         | GPU dependency, latency, and complexity, but better suited to an accuracy-first challenge                                                                                                                                                             |
-| **Transcription** | Configurable local/cloud backends                                                       | Open-source/local models reduce API cost and data sharing; paid APIs simplify setup and can improve accuracy; model choice stays configurable for speed vs accuracy                                                                                   |
-| **Extraction**    | LLM + prompt-based extraction                                                           | API/model dependency, but more robust to imperfect transcripts and varied spoken entity formats than pure heuristics; prompt examples cover reusable edge case patterns rather than overfitting to exact ground truth entities of existing recordings |
-| **Output shape**  | Forced structured JSON                                                                  | Required fields are fixed and clearly defined, so schema-constrained output reduces brittle post-processing                                                                                                                                           |
-| **Normalization** | `phonenumbers` and `email-validator`                                                    | Extra dependencies, but more reliable than hand-written deterministic normalization                                                                                                                                                                   |
-| **Prompts**       | External YAML/Jinja2 files under `prompts/extraction/`                                  | Prompt versions are trackable and swappable without changing source code                                                                                                                                                                              |
-| **Dependencies**  | Split CPU/API, slim GPU benchmark, and full GPU paths                                   | More install variants, but lighter local setup and reproducible Docker runs                                                                                                                                                                           |
-| **Iteration**     | Extraction-only mode reuses `transcriptions.json`                                       | Separates transcription cost and time from extraction prompt iteration                                                                                                                                                                                |
+| Area              | Decision                                                                                | Tradeoff / Rationale                                                                                                                                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pipeline**      | Modular preprocessing → transcription → extraction instead of one-shot multimodal model | More orchestration, but better maintainability, observability, and backend comparison                                                                                                                                                                             |
+| **Backends**      | `TranscriberBase` and `ExtractorBase` use runtime registries                            | Small abstraction overhead, but backend swaps need only `config.yaml`, no pipeline edits                                                                                                                                                                          |
+| **Preprocessing** | Optional FastEnhancer denoising                                                         | GPU dependency, latency, and complexity, but better suited to an accuracy-first challenge                                                                                                                                                                         |
+| **Transcription** | Configurable local/cloud backends + prompt-guided transcription                         | Open-source/local models reduce API cost and data sharing; paid APIs simplify setup and can improve accuracy; model choice stays configurable for speed vs accuracy; prompt-guidance during transcription helps to avoid common or edge-case transcription issues |
+| **Extraction**    | LLM + prompt-based extraction                                                           | API/model dependency, but more robust to imperfect transcripts and varied spoken entity formats than pure heuristics; prompt examples cover reusable edge case patterns rather than overfitting to exact ground truth entities of existing recordings             |
+| **Output shape**  | Forced structured JSON                                                                  | Required fields are fixed and clearly defined, so schema-constrained output reduces brittle post-processing                                                                                                                                                       |
+| **Normalization** | `phonenumbers` and `email-validator`                                                    | Extra dependencies, but more reliable than hand-written deterministic normalization                                                                                                                                                                               |
+| **Prompts**       | External YAML/Jinja2 files under `prompts/`                                             | Prompt versions are trackable and swappable without changing source code                                                                                                                                                                                          |
+| **Dependencies**  | Split CPU/API, slim GPU benchmark, and full GPU paths                                   | More install variants, but lighter local setup and reproducible Docker runs                                                                                                                                                                                       |
+| **Iteration**     | Extraction-only mode reuses `transcriptions.json`                                       | Separates transcription cost and time from extraction prompt iteration                                                                                                                                                                                            |
 
 
 ---
@@ -371,7 +371,9 @@ src/phonebot/
 ├── extraction/           # LLM extractor
 ├── transcription/        # Transcriber implementations
 └── preprocessing/        # FastEnhancer denoiser
-prompts/extraction/       # Versioned YAML/Jinja2 prompt files
+prompts/                  
+├── extraction/           # Versioned YAML/Jinja2 extraction prompt files
+└── transcription/        # Versioned YAML/Jinja2 transcription prompt files
 data/
 ├── recordings/           # 30 German WAV call recordings
 └── ground_truth.json     # Expected CallerInfo per recording

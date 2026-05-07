@@ -18,28 +18,32 @@
 # ignoriert.
 
 prompt: |
-  Im Folgenden handelt es sich um ein deutschsprachiges Telefonat, in dem ein
+  Deutschsprachiges Telefonat, in dem ein
   Kunde seine persönlichen Kontaktdaten angibt: Vorname, Nachname,
   E-Mail-Adresse und Telefonnummer.
 
   Der Anrufer kann seine E-Mail-Adresse Zeichen für Zeichen buchstabieren,
   einschließlich gesprochener Symbole wie "Punkt" (.), "Bindestrich" (-),
-  "Unterstrich" (_) und "at" oder "ät" (@). E-Mail-Domains umfassen gmail.com,
-  gmx.de, gmx.net, web.de, t-online.de, outlook.com, hotmail.com, yahoo.com,
+  "Unterstrich" (_) und "at" oder "ät" (@). 
+  E-Mail-Domain Beispiele: 
+  gmail.com, gmx.de, gmx.net, web.de, t-online.de, outlook.com, hotmail.com, yahoo.com,
   yahoo.de, freenet.de, icloud.com und protonmail.com.
 
-  Namen können internationale Zeichen und diakritische Zeichen enthalten:
-  Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Muñoz, Karlsson,
-  Nilsson, Svensson, Björk, Søren, Jørgensen, Bjørn, André, Benoît, Renault,
-  Moreau, Leclerc, Beaumont, Möller, Küppers, Körner, Großmann, Weiß,
-  Brückmann, O'Connor, O'Neill, D'Angelo, D'Amico, Wiśniewski, Wójcik,
-  Esposito, Ferrari, Nakamura, Watanabe, Mansour, Ferreira, Carvalho, Muñoz.
+  Internationale Namen können Länderspeziefische diakritische Zeichen und Sonderzeichen enthalten.
+  Beispiele:
+  Hispanisch: Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Muñoz, Esposito, Ferrari 
+  Schwedisch: Nilsson, Svensson, Björk, Søren, Jørgensen, Bjørn, Karlsson
+  Franzoesisch: André, Benoît, Renault, Moreau, Leclerc, Lemaire, Leroux, Legrand, Beaumont
+  Deutsch: Möller, Küppers, Körner, Großmann, Weiß, Brückmann
+  Irish: O'Connor, O'Neill
+  Italienisch: D'Angelo, D'Amico
+  Polnisch: Wiśniewski, Wójcik
+  Japanisch: Nakamura, Watanabe, 
+  Portugiesisch: Mansour, Ferreira, Carvalho, Muñoz
+  etc.
 
-  Telefonnummern können Ziffer für Ziffer oder in Gruppen vorgelesen werden,
-  mit internationalen Vorwahlen wie +49, 0049 oder 0. Beispiel:
-  "+49 30 1234567", "0049 221 5558899".
-
-  Bitte transkribiere das Telefonat wortgetreu und erhalte dabei
-  Zeichensetzung, Füllwörter (z. B. "ähm", "also", "genau") sowie die exakte
-  Schreibweise aller Namen und E-Mail-Bestandteile so, wie sie gesprochen
-  wurden.
+  Telefonnummern können Ziffer für Ziffer oder in Gruppen und mit internationalen Vorwahlen gesprochen werden. Gesprochenes plus immer mit + transcribieren. Gesprochene Zahlen immer mit Ziffern  transcribieren.
+  Beispiele:
+  - Vorwahl: +49, +34 
+  - gesprochene Zahlen: null-> 0, vier -> 4, sieben -> 7, nulldreineun -> 039, null zweivier -> 0 24
+  - Gesamt: +49 30 1234567, 0049 221 5558899
