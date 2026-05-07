@@ -1,4 +1,4 @@
-#  📞 Phonebot — Audio Call Entity Extraction
+# 📞 Phonebot — Audio Call Entity Extraction
 
 A pipeline that transcribes German phone-call recordings and extracts structured caller data (`first_name`, `last_name`, `email`, `phone_number`) using a configurable transcription backend and a schema-constrained LLM extractor.
 
@@ -85,7 +85,7 @@ config.yaml + .env
   Preprocessor     (no-op  │  FastEnhancer GPU denoising)
         │
         ▼
-  Transcriber      (openai_llm  │  deepgram  │  whisperx  │  parakeet)
+  Transcriber      (openai_llm (prompt-guided)  │  deepgram  │  whisperx (prompt-guided)  │  parakeet)
         │
         ▼
   LLM Extractor    (schema-constrained, prompt-driven via YAML/Jinja2)
@@ -112,8 +112,8 @@ The transcription backend, models, and all tuneable parameters are controlled by
 ## ✨ Key features
 
 - **Multiple transcription backends** — swap between cloud APIs (`openai_llm`, `deepgram`) and local GPU models (`whisperx`, `parakeet`) via a single config field
-- **Extraction-only mode** — reuse saved `transcriptions.json` from a previous run to iterate on prompts without incurring transcription costs
-- **Versioned prompts** — extraction prompts are external YAML/Jinja2 files under `prompts/`, swappable at runtime
+- **Extraction-only mode** — reuse saved `transcriptions.json` from a previous run to iterate on extraction prompts without incurring transcription costs
+- **Versioned prompts** — prompts are external YAML/Jinja2 files under `prompts/`, swappable at runtime
 - **Built-in evaluation** — per-field and overall accuracy scored against `data/ground_truth.json`
 - **GPU denoising** — optional FastEnhancer ONNX preprocessing step for noisy recordings (GPU image only)
 - **LangSmith tracing** — optional observability via LangSmith for extraction LLM calls
@@ -273,7 +273,7 @@ Options:
 
 ## ⚙️ Configuration
 
-`config_benchmark.yaml` — `openai_llm` transcriber, `gpu_enabled: true`, `denoising_enabled: true`; best-accuracy benchmark settings (94.2 % overall)
+`config_benchmark.yaml` — `openai_llm` transcriber, `gpu_enabled: true`, `denoising_enabled: true`; best-accuracy benchmark settings (95.8 % overall)
 
 `config_gpu.yaml` — `whisperx` transcriber, `gpu_enabled: true`, `denoising_enabled: true`  
 
@@ -282,14 +282,14 @@ Options:
 Key fields:
 
 
-| Field                   | Effect                                                     |
-| ----------------------- | ---------------------------------------------------------- |
-| `transcriber`           | `openai_llm` / `deepgram` / `whisperx` / `parakeet`        |
-| `gpu_enabled`           | Must be `true` for `whisperx` / `parakeet` / FastEnhancer  |
-| `denoising_enabled`     | Enables FastEnhancer GPU denoising (GPU image only)        |
-| `llm_extractor_model`   | OpenAI chat model used for extraction                      |
-| `extractor_prompt_file` | Path to YAML/Jinja2 prompt file; swap without code changes |
-| `langsmith_tracing`     | Enable LangSmith tracing                                   |
+| Field                   | Effect                                                                |
+| ----------------------- | --------------------------------------------------------------------- |
+| `transcriber`           | `openai_llm` / `deepgram` / `whisperx` / `parakeet`                   |
+| `gpu_enabled`           | Must be `true` for `whisperx` / `parakeet` / FastEnhancer             |
+| `denoising_enabled`     | Enables FastEnhancer GPU denoising (GPU image only)                   |
+| `llm_extractor_model`   | OpenAI chat model used for extraction                                 |
+| `extractor_prompt_file` | Path to YAML/Jinja2 extraction prompt file; swap without code changes |
+| `langsmith_tracing`     | Enable LangSmith tracing                                              |
 
 
 ---
