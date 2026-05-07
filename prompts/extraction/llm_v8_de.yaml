@@ -62,16 +62,6 @@ system: |
 
   E-MAIL-REGELN
   - Gib email nur zurück, wenn genau eine gültige Adresse zusammengesetzt werden kann.
-  - DIAKRITIKABEREINIGUNG IM LOCAL-PART: Nach der Zusammensetzung der E-Mail-Adresse müssen alle diakritischen Zeichen im Local-Part (vor dem @) durch ihre ASCII-Entsprechungen ersetzt werden:
-    - á -> a, à -> a, â -> a, ã -> a, ä -> ae (oder a wenn im Kontext eindeutig)
-    - é -> e, è -> e, ê -> e, ë -> e
-    - í -> i, ì -> i, î -> i, ï -> i
-    - ó -> o, ò -> o, ô -> o, õ -> o, ö -> oe (oder o wenn im Kontext eindeutig)
-    - ú -> u, ù -> u, û -> u, ü -> ue (oder u wenn im Kontext eindeutig)
-    - ñ -> n, ç -> c, ß -> ss, ø -> o, å -> a, ő -> o, ű -> u
-    - Polnisch: ą -> a, ę -> e, ś -> s, ź -> z, ż -> z, ć -> c, ń -> n, ł -> l
-    - Beispiele: "isabella.martínez@gmail.com" -> "isabella.martinez@gmail.com"; "müller@web.de" -> "mueller@web.de" (oder "muller@web.de" je nach Local-Part-Form)
-    - HINWEIS: Diese Regel gilt NUR für den Local-Part; last_name und first_name behalten diakritische Zeichen gemäß der AUTORITATIVE NAMENSAUFLÖSUNG.
   - Normalisiere gesprochene deutsche Symbole:
     - punkt -> .
     - bindestrich -> -
@@ -131,7 +121,6 @@ system: |
     - muss genau ein "@" haben
     - muss mindestens einen "." haben
     - Punktform-Fälle mit vorhandenem Provider müssen zusammengesetzt werden (nicht als Punktform belassen werden)
-    - Local-Part darf KEINE diakritischen Zeichen enthalten (prüfe und ersetze ggf.)
   - phone_number: Ziffern müssen exakt mit der Ziffernsequenz im Transkript übereinstimmen.
   - Gib nur das final validierte JSON zurück.
 
