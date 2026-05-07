@@ -15,6 +15,7 @@ from phonebot.config import PipelineConfig
 from phonebot.extraction.base import PromptTemplate
 from phonebot.extraction.llm import LLMExtractor, _ExtractedFields
 from phonebot.schemas import AudioInput
+from phonebot.transcription.base import load_transcription_prompt
 from phonebot.transcription.openai_llm import OpenAILLMTranscriber
 
 
@@ -60,14 +61,10 @@ class _FakeOpenAITranscriptionClient:
 
 
 def test_load_transcription_prompt_returns_none_when_not_configured() -> None:
-    from phonebot.transcription.base import load_transcription_prompt
-
     assert load_transcription_prompt(None) is None
 
 
 def test_load_transcription_prompt_loads_prompt_key(tmp_path: Path) -> None:
-    from phonebot.transcription.base import load_transcription_prompt
-
     prompt_file = tmp_path / "prompt.yaml"
     prompt_file.write_text("prompt: Hello, welcome to my lecture.\n", encoding="utf-8")
 
@@ -77,17 +74,11 @@ def test_load_transcription_prompt_loads_prompt_key(tmp_path: Path) -> None:
 
 
 def test_load_transcription_prompt_raises_on_missing_file() -> None:
-    import pytest
-    from phonebot.transcription.base import load_transcription_prompt
-
     with pytest.raises(FileNotFoundError):
         load_transcription_prompt("/nonexistent/path/prompt.yaml")
 
 
 def test_load_transcription_prompt_raises_on_missing_prompt_key(tmp_path: Path) -> None:
-    import pytest
-    from phonebot.transcription.base import load_transcription_prompt
-
     bad_file = tmp_path / "bad.yaml"
     bad_file.write_text("other_key: value\n", encoding="utf-8")
 
@@ -137,7 +128,7 @@ async def test_openai_llm_transcriber_omits_prompt_when_not_configured(
     assert "prompt" not in fake_client.transcriptions.calls[0]
 
 
-async def test_openai_llm_transcriber_skips_prompt_on_diarization_path(
+async def test_openai_llm_transcriber_ignores_legacy_whisperx_prompt_on_diarization_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """gpt-4o-transcribe-diarize does not support the prompt parameter — verify it is not sent."""

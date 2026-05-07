@@ -9,9 +9,6 @@ from typing import Optional
 import static_ffmpeg
 import typer
 
-# Ensure ffmpeg binary is available on PATH (downloaded once, then cached)
-static_ffmpeg.add_paths()
-
 from phonebot.config import PipelineConfig
 from phonebot.evaluation import Evaluator
 from phonebot.pipeline import run_batch
@@ -131,6 +128,11 @@ def _print_run_results(output: PipelineOutput, output_dir: Path) -> None:
         typer.echo("  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
 
 
+def _ensure_ffmpeg_on_path() -> None:
+    """Ensure the cached static ffmpeg binary is available before audio processing."""
+    static_ffmpeg.add_paths()
+
+
 @app.command()
 def run(
     samples: Optional[str] = typer.Option(
@@ -174,11 +176,16 @@ def run(
     openai_transcription_prompt_file: Optional[str] = typer.Option(
         None,
         "--openai-transcription-prompt-file",
-        help="Path to a YAML transcription prompt file for the openai_llm backend (top-level 'prompt' key).",
+        help=(
+            "Path to a YAML transcription prompt file for the openai_llm backend "
+            "(top-level 'prompt' key)."
+        ),
     ),
     output_dir: Path = typer.Option(Path("outputs"), "--output-dir", help="Output root directory"),
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
+    _ensure_ffmpeg_on_path()
+
     # Build PipelineConfig; CLI values override yaml/env for explicitly-provided args only.
     overrides: dict[str, object] = {}
     if samples is not None:

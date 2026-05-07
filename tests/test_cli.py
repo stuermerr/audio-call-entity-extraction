@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
+import pytest
 import yaml
 from typer.testing import CliRunner
 
-from phonebot.cli import _resolve_inputs, _build_ground_truth, app
+from phonebot.cli import _build_ground_truth, _resolve_inputs, app
 from phonebot.config import PipelineConfig
 from phonebot.schemas import CallerInfo, PipelineOutput
 
@@ -300,8 +302,6 @@ def test_build_ground_truth_missing_file_returns_empty_dict_and_warns(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """_build_ground_truth returns {} and logs a warning when ground_truth.json is absent."""
-    import logging
-
     with caplog.at_level(logging.WARNING, logger="phonebot.cli"):
         result = _build_ground_truth(tmp_path)
 

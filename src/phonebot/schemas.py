@@ -46,9 +46,8 @@ class TranscriptionArtifact(BaseModel):
 class CallerInfo(BaseModel):
     """Extracted caller entity fields for a single recording.
 
-    Entity fields (first_name, last_name, email, phone_number) are nullable; None
-    indicates the field was not extracted.  The authoritative list of entity fields
-    is maintained in ``phonebot.entity_specs``.
+    Entity fields (first_name, last_name, email, phone_number) are nullable;
+    ``None`` indicates the field was not extracted.
     """
 
     id: str

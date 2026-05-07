@@ -266,6 +266,10 @@ Options:
       --extraction-only         Skip transcription; read from --transcriptions-path
       --transcriptions-path     Path to a saved transcriptions.json artifact
       --extractor-prompt-file   Path to a custom YAML/Jinja2 extractor prompt file
+      --transcription-prompt-file
+                                Path to a WhisperX transcription prompt YAML
+      --openai-transcription-prompt-file
+                                Path to an openai_llm transcription prompt YAML
       --output-dir PATH         Output root  [default: outputs]
 ```
 
@@ -289,6 +293,8 @@ Key fields:
 | `denoising_enabled`     | Enables FastEnhancer GPU denoising (GPU image only)                   |
 | `llm_extractor_model`   | OpenAI chat model used for extraction                                 |
 | `extractor_prompt_file` | Path to YAML/Jinja2 extraction prompt file; swap without code changes |
+| `transcription_prompt_file` | Path to WhisperX transcription prompt YAML; null disables it       |
+| `openai_transcription_prompt_file` | Path to openai_llm transcription prompt YAML; null disables it |
 | `langsmith_tracing`     | Enable LangSmith tracing                                              |
 
 
@@ -349,6 +355,8 @@ Options:
   --transcriber TEXT            Transcriber backend registry key
   --extractor TEXT              Extractor backend registry key
   --extractor-prompt-file PATH  Path to a custom YAML/Jinja2 extractor prompt file
+  --transcription-prompt-file PATH  Path to a WhisperX transcription prompt YAML
+  --openai-transcription-prompt-file PATH  Path to an openai_llm transcription prompt YAML
   --extraction-only             Skip transcription; requires --transcriptions-path
   --transcriptions-path PATH    Path to a saved transcriptions.json artifact
   --diarization                 Enable speaker diarization (requires HF_TOKEN)
@@ -387,4 +395,3 @@ scripts/
 2. Register it in the transcriber registry (see `transcription/base.py`)
 3. Add any new config fields to `PipelineConfig` in `config.py`
 4. Add a corresponding entry to the backend table in this README
-

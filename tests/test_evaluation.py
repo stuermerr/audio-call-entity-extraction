@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from phonebot.evaluation import Evaluator, match_field, _MAX_TRANSCRIPT_CHARS
+from phonebot.evaluation import _MAX_TRANSCRIPT_CHARS, Evaluator, match_field
 from phonebot.schemas import CallerInfo, PipelineCaseResult
 
 # ---------------------------------------------------------------------------

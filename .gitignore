@@ -5,7 +5,7 @@ outputs/*
 scripts/split.py
 docs/
 data/**/.DS_Store
-
+data/splits.json
 /prompts/prompt_optimization/
 /*.md
 !/README.md

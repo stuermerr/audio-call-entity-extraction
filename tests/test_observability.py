@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -20,7 +18,6 @@ from phonebot.observability import (
     maybe_traceable,
     save_config_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

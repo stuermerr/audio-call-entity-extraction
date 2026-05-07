@@ -10,7 +10,6 @@ import yaml
 
 from phonebot.extraction.base import ExtractorBase, PromptTemplate
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

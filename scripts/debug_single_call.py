@@ -34,6 +34,7 @@ async def _run(args: argparse.Namespace) -> None:
             "transcriptions_path": args.transcriptions_path,
             "extractor_prompt_file": args.extractor_prompt_file,
             "transcription_prompt_file": args.transcription_prompt_file,
+            "openai_transcription_prompt_file": args.openai_transcription_prompt_file,
             "gpu_enabled": args.gpu,
             "denoising_enabled": args.denoising,
         }.items()
@@ -204,7 +205,12 @@ def _parse_args() -> argparse.Namespace:
         "--transcription-prompt-file",
         default=None,
         help="Path to a YAML transcription injection prompt file (top-level 'prompt' key). "
-        "Injected into WhisperX and gpt-4o-transcribe at inference time.",
+        "Injected into WhisperX at model-load time.",
+    )
+    parser.add_argument(
+        "--openai-transcription-prompt-file",
+        default=None,
+        help="Path to a YAML transcription prompt file for openai_llm (top-level 'prompt' key).",
     )
     parser.add_argument(
         "--gpu",

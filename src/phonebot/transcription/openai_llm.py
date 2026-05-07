@@ -74,12 +74,19 @@ class OpenAILLMTranscriber(TranscriberBase):
                     supports_diarization=True,
                 )
 
-            response = await self._client.audio.transcriptions.create(
-                model=self._transcriber_model,
-                file=fh,
-                response_format="json",
-                **({"prompt": self._transcription_prompt} if self._transcription_prompt else {}),
-            )
+            if self._transcription_prompt:
+                response = await self._client.audio.transcriptions.create(
+                    model=self._transcriber_model,
+                    file=fh,
+                    response_format="json",
+                    prompt=self._transcription_prompt,
+                )
+            else:
+                response = await self._client.audio.transcriptions.create(
+                    model=self._transcriber_model,
+                    file=fh,
+                    response_format="json",
+                )
             # response.text is a str for json format; guard against SDK fallback.
             text_val = response.text
             raw_text = text_val if isinstance(text_val, str) else str(text_val)
