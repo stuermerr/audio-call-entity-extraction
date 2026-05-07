@@ -8,7 +8,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from phonebot.config import PipelineConfig
 from phonebot.schemas import AudioInput, SpeakerSegment, TranscriptionResult
-from phonebot.transcription.base import TranscriberBase
+from phonebot.transcription.base import TranscriberBase, load_transcription_prompt
 
 
 class WhisperXTranscriber(TranscriberBase):
@@ -55,12 +55,22 @@ class WhisperXTranscriber(TranscriberBase):
         self._diarization_enabled = config.diarization_enabled
         self._hf_token = config.hf_token
 
+        # Load transcription injection prompt if configured.
+        # Must be injected via asr_options at load_model() time — passing
+        # initial_prompt directly to model.transcribe() raises an unexpected
+        # keyword argument error in some WhisperX versions.
+        _transcription_prompt = load_transcription_prompt(config.transcription_prompt_file)
+        _asr_options: dict = {}
+        if _transcription_prompt is not None:
+            _asr_options["initial_prompt"] = _transcription_prompt
+
         # Eager model load: surfaces GPU OOM or missing-model errors at batch
         # start, not mid-run.
         self._model = _wx.load_model(
             self._model_name,
             self._device,
             compute_type=self._compute_type,
+            asr_options=_asr_options if _asr_options else None,
         )
 
         # Patch VAD segmentation batch size after load for smaller GPUs.

@@ -166,6 +166,16 @@ def run(
         "--extractor-prompt-file",
         help="Path to a custom YAML/Jinja2 extractor prompt file.",
     ),
+    transcription_prompt_file: Optional[str] = typer.Option(
+        None,
+        "--transcription-prompt-file",
+        help="Path to a YAML transcription prompt file for WhisperX (top-level 'prompt' key).",
+    ),
+    openai_transcription_prompt_file: Optional[str] = typer.Option(
+        None,
+        "--openai-transcription-prompt-file",
+        help="Path to a YAML transcription prompt file for the openai_llm backend (top-level 'prompt' key).",
+    ),
     output_dir: Path = typer.Option(Path("outputs"), "--output-dir", help="Output root directory"),
 ) -> None:
     """Run the phonebot extraction pipeline over a set of recordings."""
@@ -183,6 +193,10 @@ def run(
         overrides["transcriptions_path"] = str(transcriptions_path)
     if extractor_prompt_file is not None:
         overrides["extractor_prompt_file"] = extractor_prompt_file
+    if transcription_prompt_file is not None:
+        overrides["transcription_prompt_file"] = transcription_prompt_file
+    if openai_transcription_prompt_file is not None:
+        overrides["openai_transcription_prompt_file"] = openai_transcription_prompt_file
     evaluate_enabled = _parse_eval_option(evaluate)
 
     try:

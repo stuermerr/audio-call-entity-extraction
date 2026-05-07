@@ -54,11 +54,140 @@ class _FakeOpenAITranscriptionClient:
         self.audio = SimpleNamespace(transcriptions=self.transcriptions)
 
 
+# ---------------------------------------------------------------------------
+# load_transcription_prompt tests
+# ---------------------------------------------------------------------------
+
+
+def test_load_transcription_prompt_returns_none_when_not_configured() -> None:
+    from phonebot.transcription.base import load_transcription_prompt
+
+    assert load_transcription_prompt(None) is None
+
+
+def test_load_transcription_prompt_loads_prompt_key(tmp_path: Path) -> None:
+    from phonebot.transcription.base import load_transcription_prompt
+
+    prompt_file = tmp_path / "prompt.yaml"
+    prompt_file.write_text("prompt: Hello, welcome to my lecture.\n", encoding="utf-8")
+
+    result = load_transcription_prompt(str(prompt_file))
+
+    assert result == "Hello, welcome to my lecture."
+
+
+def test_load_transcription_prompt_raises_on_missing_file() -> None:
+    import pytest
+    from phonebot.transcription.base import load_transcription_prompt
+
+    with pytest.raises(FileNotFoundError):
+        load_transcription_prompt("/nonexistent/path/prompt.yaml")
+
+
+def test_load_transcription_prompt_raises_on_missing_prompt_key(tmp_path: Path) -> None:
+    import pytest
+    from phonebot.transcription.base import load_transcription_prompt
+
+    bad_file = tmp_path / "bad.yaml"
+    bad_file.write_text("other_key: value\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="prompt"):
+        load_transcription_prompt(str(bad_file))
+
+
+# ---------------------------------------------------------------------------
+# Prompt injection tests for OpenAILLMTranscriber
+# ---------------------------------------------------------------------------
+
+
+async def test_openai_llm_transcriber_passes_prompt_when_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_client = _FakeOpenAITranscriptionClient()
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
+
+    prompt_file = tmp_path / "prompt.yaml"
+    prompt_file.write_text("prompt: Umm, let me think like, hmm.\n", encoding="utf-8")
+    wav = tmp_path / "call.wav"
+    wav.write_bytes(b"RIFF")
+
+    transcriber = OpenAILLMTranscriber(
+        _make_config(openai_transcription_prompt_file=str(prompt_file))
+    )
+    await transcriber.transcribe(AudioInput(id="call", file=wav))
+
+    assert fake_client.transcriptions.calls[0].get("prompt") == "Umm, let me think like, hmm."
+
+
+async def test_openai_llm_transcriber_omits_prompt_when_not_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_client = _FakeOpenAITranscriptionClient()
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
+    wav = tmp_path / "call.wav"
+    wav.write_bytes(b"RIFF")
+
+    transcriber = OpenAILLMTranscriber(_make_config())
+    await transcriber.transcribe(AudioInput(id="call", file=wav))
+
+    assert "prompt" not in fake_client.transcriptions.calls[0]
+
+
+async def test_openai_llm_transcriber_skips_prompt_on_diarization_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """gpt-4o-transcribe-diarize does not support the prompt parameter — verify it is not sent."""
+    fake_client = _FakeOpenAITranscriptionClient()
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
+
+    prompt_file = tmp_path / "prompt.yaml"
+    prompt_file.write_text("prompt: Some context.\n", encoding="utf-8")
+    wav = tmp_path / "call.wav"
+    wav.write_bytes(b"RIFF")
+
+    transcriber = OpenAILLMTranscriber(
+        _make_config(diarization_enabled=True, openai_transcription_prompt_file=str(prompt_file))
+    )
+    await transcriber.transcribe(AudioInput(id="call", file=wav))
+
+    assert "prompt" not in fake_client.transcriptions.calls[0]
+
+
+async def test_openai_llm_transcriber_skips_prompt_on_diarization_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """gpt-4o-transcribe-diarize does not support the prompt parameter — verify it is not sent."""
+    fake_client = _FakeOpenAITranscriptionClient()
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
+
+    prompt_file = tmp_path / "prompt.yaml"
+    prompt_file.write_text("prompt: Some context.\n", encoding="utf-8")
+    wav = tmp_path / "call.wav"
+    wav.write_bytes(b"RIFF")
+
+    transcriber = OpenAILLMTranscriber(
+        _make_config(diarization_enabled=True, transcription_prompt_file=str(prompt_file))
+    )
+    await transcriber.transcribe(AudioInput(id="call", file=wav))
+
+    assert "prompt" not in fake_client.transcriptions.calls[0]
+
+
 async def test_openai_llm_transcriber_uses_configured_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_client = _FakeOpenAITranscriptionClient()
-    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client)
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
     wav = tmp_path / "call.wav"
     wav.write_bytes(b"RIFF")
 
@@ -72,7 +201,9 @@ async def test_openai_llm_transcriber_uses_configured_diarization_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_client = _FakeOpenAITranscriptionClient()
-    monkeypatch.setattr("phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client)
+    monkeypatch.setattr(
+        "phonebot.transcription.openai_llm.openai.AsyncOpenAI", lambda **_kw: fake_client
+    )
     wav = tmp_path / "call.wav"
     wav.write_bytes(b"RIFF")
 

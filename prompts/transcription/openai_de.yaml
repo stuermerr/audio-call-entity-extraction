@@ -1,0 +1,49 @@
+# Transkriptions-Injection-Prompt - deutsche Telefonate, OpenAI gpt-4o-transcribe (v1)
+#
+# Dieser Prompt wird als Parameter `prompt` an gpt-4o-transcribe übergeben.
+# Anders als Whisper/WhisperX (die einen glossarartigen initial_prompt
+# verwenden) unterstützt die gpt-4o-transcribe-Familie vollständiges
+# kontextuelles Prompting in natürlicher Sprache.
+#
+# Designziele:
+#   - Die Domäne beschreiben, damit das Modell Anruftyp und Wortschatz versteht
+#   - Die korrekte Transkription internationaler Namen, E-Mail-Bestandteile
+#     und Telefonnummern steuern
+#   - Füllwörter beibehalten (das Modell neigt dazu, sie ohne Anleitung
+#     wegzulassen)
+#   - Zeichensetzung für die nachgelagerte Verarbeitung erhalten
+#
+# NICHT zur Verwendung mit gpt-4o-transcribe-diarize - der Parameter `prompt`
+# wird von diesem Modell nicht unterstützt und von der Pipeline stillschweigend
+# ignoriert.
+
+prompt: |
+  Deutschsprachiges Telefonat, in dem ein
+  Kunde seine persönlichen Kontaktdaten angibt: Vorname, Nachname,
+  E-Mail-Adresse und Telefonnummer.
+
+  Der Anrufer kann seine E-Mail-Adresse Zeichen für Zeichen buchstabieren,
+  einschließlich gesprochener Symbole wie "Punkt" (.), "Bindestrich" (-),
+  "Unterstrich" (_) und "at" oder "ät" (@). 
+  E-Mail-Domain Beispiele: 
+  gmail.com, gmx.de, gmx.net, web.de, t-online.de, outlook.com, hotmail.com, yahoo.com,
+  yahoo.de, freenet.de, icloud.com und protonmail.com.
+
+  Internationale Namen können Länderspeziefische diakritische Zeichen und Sonderzeichen enthalten.
+  Beispiele:
+  Hispanisch: Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Muñoz, Esposito, Ferrari 
+  Schwedisch: Nilsson, Svensson, Björk, Søren, Jørgensen, Bjørn, Karlsson
+  Franzoesisch: Leclerc, Lemaire, Leroux, Legrand, André, Benoît, Renault, Moreau, Beaumont
+  Deutsch: Möller, Küppers, Körner, Großmann, Weiß, Brückmann
+  Irish: O'Connor, O'Neill
+  Italienisch: D'Angelo, D'Amico
+  Polnisch: Wiśniewski, Wójcik
+  Japanisch: Nakamura, Watanabe, 
+  Portugiesisch: Mansour, Ferreira, Carvalho, Muñoz
+  etc.
+
+  Telefonnummern können Ziffer für Ziffer oder in Gruppen und mit internationalen Vorwahlen gesprochen werden. Gesprochenes plus immer mit + transcribieren. Gesprochene Zahlen immer mit Ziffern  transcribieren.
+  Beispiele:
+  - Vorwahl: +49, +34 
+  - gesprochene Zahlen: null-> 0, vier -> 4, sieben -> 7, nulldreineun -> 039, null zweivier -> 0 24
+  - Gesamt: +49 30 1234567, 0049 221 5558899
