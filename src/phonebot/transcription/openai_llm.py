@@ -20,7 +20,8 @@ class OpenAILLMTranscriber(TranscriberBase):
     pipeline can catch it and produce null CallerInfo.
 
     Transcription prompt injection:
-      Supported on gpt-4o-transcribe (non-diarize) via the ``prompt`` parameter.
+      Supported on gpt-4o-transcribe (non-diarize) via the ``prompt`` parameter;
+      reads from ``config.openai_transcription_prompt_file``.
       NOT supported on gpt-4o-transcribe-diarize — prompt is silently skipped
       on that path per the OpenAI API spec.
     """
@@ -32,7 +33,7 @@ class OpenAILLMTranscriber(TranscriberBase):
         self._transcriber_model = config.openai_llm_transcriber_model
         self._diarization_model = config.openai_llm_diarization_model
         self._transcription_prompt: str | None = load_transcription_prompt(
-            config.transcription_prompt_file
+            config.openai_transcription_prompt_file
         )
         self._client = openai.AsyncOpenAI(timeout=_API_TIMEOUT_S)
 

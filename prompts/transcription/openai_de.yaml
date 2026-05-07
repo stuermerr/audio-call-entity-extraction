@@ -1,0 +1,45 @@
+# Transkriptions-Injection-Prompt - deutsche Telefonate, OpenAI gpt-4o-transcribe (v1)
+#
+# Dieser Prompt wird als Parameter `prompt` an gpt-4o-transcribe übergeben.
+# Anders als Whisper/WhisperX (die einen glossarartigen initial_prompt
+# verwenden) unterstützt die gpt-4o-transcribe-Familie vollständiges
+# kontextuelles Prompting in natürlicher Sprache.
+#
+# Designziele:
+#   - Die Domäne beschreiben, damit das Modell Anruftyp und Wortschatz versteht
+#   - Die korrekte Transkription internationaler Namen, E-Mail-Bestandteile
+#     und Telefonnummern steuern
+#   - Füllwörter beibehalten (das Modell neigt dazu, sie ohne Anleitung
+#     wegzulassen)
+#   - Zeichensetzung für die nachgelagerte Verarbeitung erhalten
+#
+# NICHT zur Verwendung mit gpt-4o-transcribe-diarize - der Parameter `prompt`
+# wird von diesem Modell nicht unterstützt und von der Pipeline stillschweigend
+# ignoriert.
+
+prompt: |
+  Im Folgenden handelt es sich um ein deutschsprachiges Telefonat, in dem ein
+  Kunde seine persönlichen Kontaktdaten angibt: Vorname, Nachname,
+  E-Mail-Adresse und Telefonnummer.
+
+  Der Anrufer kann seine E-Mail-Adresse Zeichen für Zeichen buchstabieren,
+  einschließlich gesprochener Symbole wie "Punkt" (.), "Bindestrich" (-),
+  "Unterstrich" (_) und "at" oder "ät" (@). E-Mail-Domains umfassen gmail.com,
+  gmx.de, gmx.net, web.de, t-online.de, outlook.com, hotmail.com, yahoo.com,
+  yahoo.de, freenet.de, icloud.com und protonmail.com.
+
+  Namen können internationale Zeichen und diakritische Zeichen enthalten:
+  Álvarez, Ramírez, González, Hernández, Peña, Ibáñez, Muñoz, Karlsson,
+  Nilsson, Svensson, Björk, Søren, Jørgensen, Bjørn, André, Benoît, Renault,
+  Moreau, Leclerc, Beaumont, Möller, Küppers, Körner, Großmann, Weiß,
+  Brückmann, O'Connor, O'Neill, D'Angelo, D'Amico, Wiśniewski, Wójcik,
+  Esposito, Ferrari, Nakamura, Watanabe, Mansour, Ferreira, Carvalho, Muñoz.
+
+  Telefonnummern können Ziffer für Ziffer oder in Gruppen vorgelesen werden,
+  mit internationalen Vorwahlen wie +49, 0049 oder 0. Beispiel:
+  "+49 30 1234567", "0049 221 5558899".
+
+  Bitte transkribiere das Telefonat wortgetreu und erhalte dabei
+  Zeichensetzung, Füllwörter (z. B. "ähm", "also", "genau") sowie die exakte
+  Schreibweise aller Namen und E-Mail-Bestandteile so, wie sie gesprochen
+  wurden.
